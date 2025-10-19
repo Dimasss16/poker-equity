@@ -36,6 +36,7 @@ class LiveOddsCalculator:
         self.num_players = num_players
         self.player_hands: List[List[Card]] = []
         self.board: List[Card] = []
+        self.folded_players: set = set()  # Track which players folded
         self.street = 'preflop'
 
     def add_player_hand(self, hand: List[Card]):
@@ -127,61 +128,222 @@ class LiveOddsCalculator:
         known.extend(self.board)
         return known
 
-    def calculate_equities(self, num_sims: int = 10_000, seed: int = None) -> Dict[int, float]:
+    def get_active_players(self) -> List[int]:
+        """
+        Get list of active (non-folded) player indices.
+
+        Returns:
+            List of player indices (0-based) still in the hand
+        """
+        return [i for i in range(self.num_players) if i not in self.folded_players]
+
+    def fold_player(self, player_idx: int):
+        """
+        Fold a player's hand (permanent for this hand).
+
+        Folded players receive 0% equity but their cards remain in the
+        known cards list, preventing them from appearing in simulations.
+
+        Args:
+            player_idx: Player index (0-based) to fold
+
+        Raises:
+            ValueError: If invalid index, already folded, or would leave < 1 player
+        """
+        # Validate player index
+        if not 0 <= player_idx < self.num_players:
+            raise ValueError(f"Invalid player index: {player_idx}")
+
+        # Check if already folded
+        if player_idx in self.folded_players:
+            raise ValueError(f"Player {player_idx + 1} already folded")
+
+        # Check if this would leave zero active players
+        active_players = self.get_active_players()
+        if len(active_players) <= 1:
+            raise ValueError("Cannot fold: only 1 player remaining")
+
+        # Fold the player
+        self.folded_players.add(player_idx)
+
+    # def calculate_equities(self, num_sims: int = 10_000, seed: int = None) -> Dict[int, float]:
+    #     if len(self.player_hands) != self.num_players:
+    #         raise ValueError(f"Expected {self.num_players} players, got {len(self.player_hands)}")
+    #
+    #     if seed is not None:
+    #         random.seed(seed)
+    #
+    #     if len(self.board) == 5:
+    #         return self._calculate_exact_equities()
+    #
+    #     win_counts = [0.0] * self.num_players
+    #     cards_needed = 5 - len(self.board)
+    #
+    #     known_cards_set = set((c.rank, c.suit) for c in self.get_all_known_cards())
+    #
+    #     for _ in range(num_sims):
+    #         deck = Deck()
+    #         deck.shuffle()
+    #
+    #         available_cards = [c for c in deck._cards if (c.rank, c.suit) not in known_cards_set]
+    #
+    #         # Deal board from available cards
+    #         remaining_board = available_cards[:cards_needed]
+    #         full_board = self.board + remaining_board
+    #
+    #         # Evaluate all hands
+    #         strengths = {}
+    #         for player_idx in range(self.num_players):
+    #             player_hand = self.player_hands[player_idx]
+    #             strength = evaluate(player_hand + full_board)
+    #             strengths[player_idx] = strength
+    #
+    #         # Determine winner(s)
+    #         max_strength = max(strengths.values())
+    #         winners = [i for i, s in strengths.items() if s == max_strength]
+    #
+    #         equity_per_winner = 1.0 / len(winners)
+    #         for winner_idx in winners:
+    #             win_counts[winner_idx] += equity_per_winner
+    #
+    #     equities = {i: count / num_sims for i, count in enumerate(win_counts)}
+    #     return equities
+    def calculate_equities(self, num_sims: int = 10_000, seed: int = None, debug: bool = False) -> Dict[int, float]:
+        """
+        Calculate win probability for each player.
+
+        Folded players receive 0% equity. Their cards are excluded from the deck
+        but still tracked (they cannot appear on future streets).
+
+        Args:
+            num_sims: Number of Monte Carlo simulations
+            seed: Random seed for reproducibility
+            debug: If True, print debug info for first simulation
+
+        Returns:
+            Dict mapping player index to equity (0.0-1.0)
+            Folded players have equity = 0.0
+        """
         if len(self.player_hands) != self.num_players:
             raise ValueError(f"Expected {self.num_players} players, got {len(self.player_hands)}")
+
+        # Get active players
+        active_players = self.get_active_players()
+
+        # If only 1 active player, they have 100% equity
+        if len(active_players) == 1:
+            equities = {i: 0.0 for i in range(self.num_players)}
+            equities[active_players[0]] = 1.0
+            return equities
 
         if seed is not None:
             random.seed(seed)
 
+        # If river is complete, calculate exactly
         if len(self.board) == 5:
             return self._calculate_exact_equities()
 
+        # Monte Carlo simulation (only for active players)
         win_counts = [0.0] * self.num_players
         cards_needed = 5 - len(self.board)
 
+        # Pre-compute known cards (includes folded players' cards!)
         known_cards_set = set((c.rank, c.suit) for c in self.get_all_known_cards())
 
-        for _ in range(num_sims):
+        for sim_idx in range(num_sims):
+            # Create and shuffle deck
             deck = Deck()
             deck.shuffle()
 
+            # Remove known cards efficiently (includes folded hands)
             available_cards = [c for c in deck._cards if (c.rank, c.suit) not in known_cards_set]
 
             # Deal board from available cards
             remaining_board = available_cards[:cards_needed]
             full_board = self.board + remaining_board
 
-            # Evaluate all hands
+            # Evaluate only active players' hands
             strengths = {}
-            for player_idx in range(self.num_players):
+            for player_idx in active_players:
                 player_hand = self.player_hands[player_idx]
                 strength = evaluate(player_hand + full_board)
                 strengths[player_idx] = strength
 
-            # Determine winner(s)
+            # Determine winner(s) among active players
             max_strength = max(strengths.values())
             winners = [i for i, s in strengths.items() if s == max_strength]
 
+            # DEBUG: Log first simulation
+            if debug and sim_idx == 0:
+                print("\n[DEBUG] First Simulation:")
+                print(f"  Known cards: {[(c.rank, c.suit) for c in self.get_all_known_cards()]}")
+                print(f"  Active players: {active_players}")
+                print(f"  Folded players: {list(self.folded_players)}")
+                print(f"  Board dealt: {[(c.rank, c.suit) for c in remaining_board]}")
+                for p_idx in active_players:
+                    hand = self.player_hands[p_idx]
+                    print(f"  Player {p_idx}: {[(c.rank, c.suit) for c in hand]} = strength {strengths[p_idx]}")
+                print(f"  Winners: {winners}\n")
+
+            # Award equity (split if tie)
             equity_per_winner = 1.0 / len(winners)
             for winner_idx in winners:
                 win_counts[winner_idx] += equity_per_winner
 
-        equities = {i: count / num_sims for i, count in enumerate(win_counts)}
-        return equities
-
-    def _calculate_exact_equities(self) -> Dict[int, float]:
-        strengths = []
-        for player_hand in self.player_hands:
-            strength = evaluate(player_hand + self.board)
-            strengths.append(strength)
-
-        max_strength = max(strengths)
-        winners = [i for i, s in enumerate(strengths) if s == max_strength]
-
+        # Convert to percentages (folded players get 0%)
         equities = {}
         for i in range(self.num_players):
-            if i in winners:
+            if i in self.folded_players:
+                equities[i] = 0.0
+            else:
+                equities[i] = win_counts[i] / num_sims
+
+        return equities
+
+    # def _calculate_exact_equities(self) -> Dict[int, float]:
+    #     strengths = []
+    #     for player_hand in self.player_hands:
+    #         strength = evaluate(player_hand + self.board)
+    #         strengths.append(strength)
+    #
+    #     max_strength = max(strengths)
+    #     winners = [i for i, s in enumerate(strengths) if s == max_strength]
+    #
+    #     equities = {}
+    #     for i in range(self.num_players):
+    #         if i in winners:
+    #             equities[i] = 1.0 / len(winners)
+    #         else:
+    #             equities[i] = 0.0
+    #
+    #     return equities
+    def _calculate_exact_equities(self) -> Dict[int, float]:
+        """Calculate exact equities when all 5 board cards are known."""
+        active_players = self.get_active_players()
+
+        # If only 1 active player, they have 100%
+        if len(active_players) == 1:
+            equities = {i: 0.0 for i in range(self.num_players)}
+            equities[active_players[0]] = 1.0
+            return equities
+
+        # Evaluate only active players
+        strengths = {}
+        for player_idx in active_players:
+            player_hand = self.player_hands[player_idx]
+            strength = evaluate(player_hand + self.board)
+            strengths[player_idx] = strength
+
+        # Determine winner(s) among active players
+        max_strength = max(strengths.values())
+        winners = [i for i, s in strengths.items() if s == max_strength]
+
+        # Calculate exact equities
+        equities = {}
+        for i in range(self.num_players):
+            if i in self.folded_players:
+                equities[i] = 0.0
+            elif i in winners:
                 equities[i] = 1.0 / len(winners)
             else:
                 equities[i] = 0.0

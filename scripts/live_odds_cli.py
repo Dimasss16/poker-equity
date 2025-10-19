@@ -26,12 +26,16 @@ def display_equities(calc: LiveOddsCalculator, equities: dict, show_board: bool 
         equity = equities[player_idx]
         hand_str = format_cards(calc.player_hands[player_idx])
 
+        is_folded = player_idx in calc.folded_players
+
         # Show hand type on river
         hand_info = ""
         if len(calc.board) == 5:
             full_hand = calc.player_hands[player_idx] + calc.board
             hand_type = handtype(full_hand)
             hand_info = f" ({hand_type})"
+        if is_folded:
+            hand_info = " (FOLDED)"
 
         player_name = "You" if player_idx == 0 else f"Player {player_idx + 1}"
 
@@ -47,6 +51,65 @@ def display_equities(calc: LiveOddsCalculator, equities: dict, show_board: bool 
         print(f"{player_name:10s} [{hand_str}]  {equity * 100:5.1f}%  {bar}{hand_info}")
 
     print()
+
+def handle_fold_commands(calc: LiveOddsCalculator, next_street: str = "next street") -> bool | None:
+    """
+    Handle folding.
+
+    Args:
+        calc: LiveOddsCalculator instance
+        next_street: Name of the next street (e.g., "flop", "turn", "river")
+
+    Returns:
+        True if a fold occurred, False if user wants to continue
+    """
+    active_players = calc.get_active_players()
+
+    # Don't allow folding if only 1 player remains
+    if len(active_players) <= 1:
+        input("Press Enter to continue...")
+        return False
+
+    print("Options:")
+    print(f"  [Enter]  - Continue to {next_street}")
+
+    # Show fold options for active players only
+    for player_idx in active_players:
+        player_name = "You" if player_idx == 0 else f"Player {player_idx + 1}"
+        print(f"  [f{player_idx + 1}]    - Fold {player_name}")
+
+    print()
+
+    while True:
+        command = input("> ").strip().lower()
+
+        # Empty = continue
+        if command == "":
+            return False
+
+        # Fold command: f1, f2, f3, etc.
+        if command.startswith('f') and len(command) == 2 and command[1].isdigit():
+            try:
+                player_num = int(command[1])
+                player_idx = player_num - 1
+
+                # Try to fold
+                calc.fold_player(player_idx)
+
+                player_name = "You" if player_idx == 0 else f"Player {player_num}"
+                hand_str = format_cards(calc.player_hands[player_idx])
+                print(f"\n{player_name} folds [{hand_str}]\n")
+
+                return True
+
+            except ValueError as e:
+                print(f"  {e}")
+                continue
+            except Exception as e:
+                print(f"  Error: {e}")
+                continue
+
+        print("  Invalid command. Press Enter to continue or 'f#' to fold a player.")
 
 
 def main():
@@ -98,11 +161,19 @@ def main():
     print("="*30)
     # Pre-flop
     print("Simulating 50,000 random boards...")
-    equities = calc.calculate_equities(num_sims=50_000)
+
+    equities = calc.calculate_equities(num_sims=50_000, debug=True)
     display_equities(calc, equities, show_board=False)
 
-    # Deal flop
-    input("Press Enter to deal the flop...")
+    # Allow folding pre-flop
+    while handle_fold_commands(calc, "the flop"):
+        print("=" * 30)
+        print("Updated pre-flop equities")
+        print("=" * 30)
+        print("Recalculating with remaining players...")
+        equities = calc.calculate_equities(num_sims=50_000)
+        display_equities(calc, equities, show_board=False)
+
     print()
     while True:
         try:
@@ -127,8 +198,16 @@ def main():
     equities = calc.calculate_equities(num_sims=50_000)
     display_equities(calc, equities)
 
+    # Allow folding on flop
+    while handle_fold_commands(calc, next_street="the turn"):
+        print("=" * 30)
+        print("Updated flop equities")
+        print("=" * 30)
+        print("Recalculating with remaining players...")
+        equities = calc.calculate_equities(num_sims=50_000)
+        display_equities(calc, equities)
+
     # Deal turn
-    input("Press Enter to deal the turn...")
     print()
     while True:
         try:
@@ -149,12 +228,20 @@ def main():
     print("Calculating turn equities")
     print("="*30)
     print("Simulating 10,000 river cards...")
-    # Turn
+
     equities = calc.calculate_equities(num_sims=10_000)
     display_equities(calc, equities)
 
+    # Allow folding on turn
+    while handle_fold_commands(calc, next_street="the river"):
+        print("=" * 30)
+        print("Updated turn equities")
+        print("=" * 30)
+        print("Recalculating with remaining players...")
+        equities = calc.calculate_equities(num_sims=10_000)
+        display_equities(calc, equities)
+
     # Deal river
-    input("Press Enter to deal the river...")
     print()
     while True:
         try:
@@ -195,5 +282,4 @@ def main():
 
 if __name__ == '__main__':
     main()
-    # TODO: add folding feature
     # TODO: add probability of split and show when non-zero
