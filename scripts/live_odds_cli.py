@@ -23,32 +23,51 @@ def display_equities(calc: LiveOddsCalculator, equities: dict, show_board: bool 
     print()
 
     for player_idx in range(calc.num_players):
-        equity = equities[player_idx]
+        # Get outcome probability (not equity)
+        outcome_prob = calc.last_outright_win_probabilities.get(player_idx, 0.0)
         hand_str = format_cards(calc.player_hands[player_idx])
 
+        # Check if folded
         is_folded = player_idx in calc.folded_players
 
-        # Show hand type on river
+        # Show hand type on river (if not folded)
         hand_info = ""
-        if len(calc.board) == 5:
+        if len(calc.board) == 5 and not is_folded:
             full_hand = calc.player_hands[player_idx] + calc.board
             hand_type = handtype(full_hand)
             hand_info = f" ({hand_type})"
+
+        # Show FOLDED status
         if is_folded:
             hand_info = " (FOLDED)"
 
         player_name = "You" if player_idx == 0 else f"Player {player_idx + 1}"
 
         bar = tqdm.format_meter(
-            n=int(equity * 100),
+            n=int(outcome_prob * 100),
             total=100,
             elapsed=0,
-            ncols=60,  # Total width of bar + percentage
+            ncols=60,
             bar_format="{percentage:3.0f}%|{bar}|",
             ascii=False
         )
 
-        print(f"{player_name:10s} [{hand_str}]  {equity * 100:5.1f}%  {bar}{hand_info}")
+        print(f"{player_name:10s} [{hand_str}]  {outcome_prob * 100:5.1f}%  {bar}{hand_info}")
+
+    # Show split probability if meaningful (>1%)
+    if calc.last_split_probability > 0.01:
+        split_pct = calc.last_split_probability * 100
+
+        bar = tqdm.format_meter(
+            n=int(split_pct),
+            total=100,
+            elapsed=0,
+            ncols=60,
+            bar_format="{percentage:3.0f}%|{bar}|",
+            ascii=False
+        )
+
+        print(f"{'Split':10s}          {split_pct:5.1f}%  {bar}")
 
     print()
 
@@ -113,9 +132,9 @@ def handle_fold_commands(calc: LiveOddsCalculator, next_street: str = "next stre
 
 
 def main():
-    print("="*30)
+    print("=" * 30)
     print("Live poker odds calculator")
-    print("="*30)
+    print("=" * 30)
     print()
     print("Calculate real-time equity as the hand progresses.")
     print("All players' hole cards must be known.")
@@ -156,9 +175,9 @@ def main():
                 print(f"Error: {e}")
 
     # Calculate pre-flop equities
-    print("="*30)
+    print("=" * 30)
     print("Calculating pre-flop equities")
-    print("="*30)
+    print("=" * 30)
     # Pre-flop
     print("Simulating 50,000 random boards...")
 
@@ -190,9 +209,9 @@ def main():
         except Exception as e:
             print(f"Error: {e}")
 
-    print("="*30)
+    print("=" * 30)
     print("Calculating flop equities")
-    print("="*30)
+    print("=" * 30)
     print("Simulating 50,000 turn/river combinations...")
     # Flop
     equities = calc.calculate_equities(num_sims=50_000)
@@ -224,9 +243,9 @@ def main():
         except Exception as e:
             print(f"Error: {e}")
 
-    print("="*30)
+    print("=" * 30)
     print("Calculating turn equities")
-    print("="*30)
+    print("=" * 30)
     print("Simulating 10,000 river cards...")
 
     equities = calc.calculate_equities(num_sims=10_000)
@@ -282,4 +301,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-    # TODO: add probability of split and show when non-zero

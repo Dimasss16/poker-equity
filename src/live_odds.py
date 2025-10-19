@@ -38,6 +38,8 @@ class LiveOddsCalculator:
         self.board: List[Card] = []
         self.folded_players: set = set()  # Track which players folded
         self.street = 'preflop'
+        self.last_split_probability: float = 0.0  # Overall probability of any split
+        self.last_player_split_probabilities: Dict[int, float] = {}  # Per-player split prob
 
     def add_player_hand(self, hand: List[Card]):
         if len(hand) != 2:
@@ -201,7 +203,9 @@ class LiveOddsCalculator:
             return self._calculate_exact_equities()
 
         # Monte Carlo simulation (only for active players)
-        win_counts = [0.0] * self.num_players
+        win_counts = [0.0] * self.num_players  # For equity calculation
+        outright_win_counts = [0.0] * self.num_players  # For outcome display
+        split_count = 0  # Track total splits
         cards_needed = 5 - len(self.board)
 
         # Pre-compute known cards (includes folded players' cards!)
@@ -226,16 +230,24 @@ class LiveOddsCalculator:
                 strength = evaluate(player_hand + full_board)
                 strengths[player_idx] = strength
 
-            # Determine winner(s) among active players
+
             max_strength = max(strengths.values())
             winners = [i for i, s in strengths.items() if s == max_strength]
 
-            # Award equity (split if tie)
+            # Track outcomes
+            if len(winners) > 1:
+                # Split pot
+                split_count += 1
+            else:
+                # Outright win
+                outright_win_counts[winners[0]] += 1
+
+            # Award equity (for equity calculation)
             equity_per_winner = 1.0 / len(winners)
             for winner_idx in winners:
                 win_counts[winner_idx] += equity_per_winner
 
-        # Convert to percentages (folded players get 0%)
+
         equities = {}
         for i in range(self.num_players):
             if i in self.folded_players:
@@ -243,25 +255,21 @@ class LiveOddsCalculator:
             else:
                 equities[i] = win_counts[i] / num_sims
 
+        # Store outcome probabilities (for display)
+        self.last_outright_win_probabilities = {}
+        for i in range(self.num_players):
+            if i in self.folded_players:
+                self.last_outright_win_probabilities[i] = 0.0
+            else:
+                self.last_outright_win_probabilities[i] = outright_win_counts[i] / num_sims
+
+        # Store split probability
+        self.last_split_probability = split_count / num_sims
+
         return equities
 
-    # def _calculate_exact_equities(self) -> Dict[int, float]:
-    #     strengths = []
-    #     for player_hand in self.player_hands:
-    #         strength = evaluate(player_hand + self.board)
-    #         strengths.append(strength)
-    #
-    #     max_strength = max(strengths)
-    #     winners = [i for i, s in enumerate(strengths) if s == max_strength]
-    #
-    #     equities = {}
-    #     for i in range(self.num_players):
-    #         if i in winners:
-    #             equities[i] = 1.0 / len(winners)
-    #         else:
-    #             equities[i] = 0.0
-    #
-    #     return equities
+
+
     def _calculate_exact_equities(self) -> Dict[int, float]:
         """Calculate exact equities when all 5 board cards are known."""
         active_players = self.get_active_players()
@@ -283,7 +291,6 @@ class LiveOddsCalculator:
         max_strength = max(strengths.values())
         winners = [i for i, s in strengths.items() if s == max_strength]
 
-        # Calculate exact equities
         equities = {}
         for i in range(self.num_players):
             if i in self.folded_players:
@@ -292,6 +299,19 @@ class LiveOddsCalculator:
                 equities[i] = 1.0 / len(winners)
             else:
                 equities[i] = 0.0
+
+        # Store outcome probabilities (deterministic on river)
+        self.last_outright_win_probabilities = {}
+        for i in range(self.num_players):
+            if i in self.folded_players:
+                self.last_outright_win_probabilities[i] = 0.0
+            elif i in winners and len(winners) == 1:
+                self.last_outright_win_probabilities[i] = 1.0
+            else:
+                self.last_outright_win_probabilities[i] = 0.0
+
+        # Store split probability
+        self.last_split_probability = 1.0 if len(winners) > 1 else 0.0
 
         return equities
 
