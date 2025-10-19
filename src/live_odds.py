@@ -128,16 +128,6 @@ class LiveOddsCalculator:
         return known
 
     def calculate_equities(self, num_sims: int = 10_000, seed: int = None) -> Dict[int, float]:
-        """
-        Calculate win probability for each player.
-
-        Args:
-            num_sims: Number of Monte Carlo simulations
-            seed: Random seed for reproducibility
-
-        Returns:
-            Dict mapping player index (0-based) to equity (0.0-1.0)
-        """
         if len(self.player_hands) != self.num_players:
             raise ValueError(f"Expected {self.num_players} players, got {len(self.player_hands)}")
 
@@ -150,32 +140,29 @@ class LiveOddsCalculator:
         win_counts = [0.0] * self.num_players
         cards_needed = 5 - len(self.board)
 
+        known_cards_set = set((c.rank, c.suit) for c in self.get_all_known_cards())
+
         for _ in range(num_sims):
             deck = Deck()
             deck.shuffle()
 
-            known_cards = self.get_all_known_cards()
-            for card in known_cards:
-                for i, deck_card in enumerate(deck._cards):
-                    if deck_card.rank == card.rank and deck_card.suit == card.suit:
-                        deck._cards.pop(i)
-                        break
+            available_cards = [c for c in deck._cards if (c.rank, c.suit) not in known_cards_set]
 
-            # Complete the board
-            remaining_board = [deck.deal_one() for _ in range(cards_needed)]
+            # Deal board from available cards
+            remaining_board = available_cards[:cards_needed]
             full_board = self.board + remaining_board
 
             # Evaluate all hands
-            strengths = []
-            for player_hand in self.player_hands:
+            strengths = {}
+            for player_idx in range(self.num_players):
+                player_hand = self.player_hands[player_idx]
                 strength = evaluate(player_hand + full_board)
-                strengths.append(strength)
+                strengths[player_idx] = strength
 
             # Determine winner(s)
-            max_strength = max(strengths)
-            winners = [i for i, s in enumerate(strengths) if s == max_strength]
+            max_strength = max(strengths.values())
+            winners = [i for i, s in strengths.items() if s == max_strength]
 
-            # Award equity (split if tie)
             equity_per_winner = 1.0 / len(winners)
             for winner_idx in winners:
                 win_counts[winner_idx] += equity_per_winner
