@@ -356,5 +356,393 @@ class TestStreetProgression(unittest.TestCase):
             calc.deal_river(Card('K', 'h'))
 
 
+class TestFoldingBasics(unittest.TestCase):
+
+    def test_fold_single_player(self):
+        calc = LiveOddsCalculator(3)
+        calc.add_player_hand([Card('A', 's'), Card('A', 'h')])
+        calc.add_player_hand([Card('K', 'd'), Card('K', 'c')])
+        calc.add_player_hand([Card('Q', 's'), Card('Q', 'h')])
+
+        # Fold player 2 (index 1)
+        calc.fold_player(1)
+
+        self.assertIn(1, calc.folded_players)
+        self.assertNotIn(0, calc.folded_players)
+        self.assertNotIn(2, calc.folded_players)
+
+    def test_get_active_players(self):
+        calc = LiveOddsCalculator(4)
+        calc.add_player_hand([Card('A', 's'), Card('A', 'h')])
+        calc.add_player_hand([Card('K', 'd'), Card('K', 'c')])
+        calc.add_player_hand([Card('Q', 's'), Card('Q', 'h')])
+        calc.add_player_hand([Card('J', 's'), Card('J', 'h')])
+
+        # Initially all active
+        self.assertEqual(calc.get_active_players(), [0, 1, 2, 3])
+
+        # Fold player 2
+        calc.fold_player(1)
+        self.assertEqual(calc.get_active_players(), [0, 2, 3])
+
+        # Fold player 4
+        calc.fold_player(3)
+        self.assertEqual(calc.get_active_players(), [0, 2])
+
+    def test_folded_player_has_zero_equity(self):
+        calc = LiveOddsCalculator(3)
+        calc.add_player_hand([Card('A', 's'), Card('A', 'h')])
+        calc.add_player_hand([Card('K', 'd'), Card('K', 'c')])
+        calc.add_player_hand([Card('Q', 's'), Card('Q', 'h')])
+
+        # Fold player 2
+        calc.fold_player(1)
+
+        equities = calc.calculate_equities(num_sims=5_000, seed=42)
+
+        self.assertEqual(equities[1], 0.0)
+        self.assertGreater(equities[0], 0.0)
+        self.assertGreater(equities[2], 0.0)
+
+    def test_active_equities_sum_to_one(self):
+        calc = LiveOddsCalculator(3)
+        calc.add_player_hand([Card('A', 's'), Card('A', 'h')])
+        calc.add_player_hand([Card('K', 'd'), Card('K', 'c')])
+        calc.add_player_hand([Card('Q', 's'), Card('Q', 'h')])
+
+        # Fold player 3
+        calc.fold_player(2)
+
+        equities = calc.calculate_equities(num_sims=5_000, seed=42)
+
+        total = sum(equities.values())
+        self.assertGreaterEqual(total, 0.99)
+        self.assertLessEqual(total, 1.01)
+
+
+class TestFoldingEdgeCases(unittest.TestCase):
+    def test_cannot_fold_invalid_player_index(self):
+        """Cannot fold player with invalid index."""
+        calc = LiveOddsCalculator(3)
+        calc.add_player_hand([Card('A', 's'), Card('A', 'h')])
+        calc.add_player_hand([Card('K', 'd'), Card('K', 'c')])
+        calc.add_player_hand([Card('Q', 's'), Card('Q', 'h')])
+
+        # Trying to fold player 5 (doesn't exist)
+        with self.assertRaisesRegex(ValueError, "Invalid player index"):
+            calc.fold_player(5)
+
+        # Trying to fold player -1
+        with self.assertRaisesRegex(ValueError, "Invalid player index"):
+            calc.fold_player(-1)
+
+    def test_cannot_fold_already_folded_player(self):
+        """Cannot fold a player who already folded."""
+        calc = LiveOddsCalculator(3)
+        calc.add_player_hand([Card('A', 's'), Card('A', 'h')])
+        calc.add_player_hand([Card('K', 'd'), Card('K', 'c')])
+        calc.add_player_hand([Card('Q', 's'), Card('Q', 'h')])
+
+        # Fold player 2
+        calc.fold_player(1)
+
+        # Try to fold player 2 again
+        with self.assertRaisesRegex(ValueError, "already folded"):
+            calc.fold_player(1)
+
+    def test_cannot_fold_last_remaining_player(self):
+        """Cannot fold when only 1 player remains."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('A', 's'), Card('A', 'h')])
+        calc.add_player_hand([Card('K', 'd'), Card('K', 'c')])
+
+        # Fold player 1
+        calc.fold_player(0)
+
+        # Try to fold player 2 (only one left)
+        with self.assertRaisesRegex(ValueError, "only 1 player remaining"):
+            calc.fold_player(1)
+
+    def test_cannot_fold_in_three_player_with_one_folded(self):
+        """Cannot fold when only 1 active player would remain."""
+        calc = LiveOddsCalculator(3)
+        calc.add_player_hand([Card('A', 's'), Card('A', 'h')])
+        calc.add_player_hand([Card('K', 'd'), Card('K', 'c')])
+        calc.add_player_hand([Card('Q', 's'), Card('Q', 'h')])
+
+        # Fold players 1 and 2
+        calc.fold_player(0)
+        calc.fold_player(1)
+
+        # Try to fold player 3 (only one left)
+        with self.assertRaisesRegex(ValueError, "only 1 player remaining"):
+            calc.fold_player(2)
+
+
+class TestFoldingEquityCalculation(unittest.TestCase):
+    """Test equity calculations with folded players."""
+
+    def test_last_player_standing_has_100_percent(self):
+        """When only 1 player remains, they have 100% equity."""
+        calc = LiveOddsCalculator(3)
+        calc.add_player_hand([Card('A', 's'), Card('A', 'h')])
+        calc.add_player_hand([Card('K', 'd'), Card('K', 'c')])
+        calc.add_player_hand([Card('Q', 's'), Card('Q', 'h')])
+
+        # Fold players 1 and 2
+        calc.fold_player(0)
+        calc.fold_player(1)
+
+        equities = calc.calculate_equities(num_sims=5_000)
+
+        self.assertEqual(equities[0], 0.0)
+        self.assertEqual(equities[1], 0.0)
+        self.assertEqual(equities[2], 1.0)
+
+    def test_folding_improves_remaining_players_equity(self):
+        """Folding a player increases others' equity."""
+        calc = LiveOddsCalculator(3)
+        calc.add_player_hand([Card('A', 's'), Card('A', 'h')])
+        calc.add_player_hand([Card('7', 'd'), Card('2', 'c')])  # Trash hand
+        calc.add_player_hand([Card('K', 's'), Card('K', 'h')])
+
+        # Equity before fold
+        equities_before = calc.calculate_equities(num_sims=10_000, seed=42)
+
+        # Fold the trash hand (player 2)
+        calc.fold_player(1)
+
+        # Equity after fold
+        equities_after = calc.calculate_equities(num_sims=10_000, seed=42)
+
+        # AA and KK should both have higher equity now
+        self.assertGreater(equities_after[0], equities_before[0])
+        self.assertGreater(equities_after[2], equities_before[2])
+        self.assertEqual(equities_after[1], 0.0)
+
+    def test_folding_after_flop(self):
+        """Folding works correctly after flop is dealt."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+        calc.add_player_hand([Card('7', 'h'), Card('2', 'c')])
+
+        # Deal flop
+        calc.deal_flop([Card('A', 'h'), Card('K', 'd'), Card('Q', 'c')])
+
+        # Fold player 2
+        calc.fold_player(1)
+
+        equities = calc.calculate_equities(num_sims=5_000)
+
+        self.assertEqual(equities[0], 1.0)
+        self.assertEqual(equities[1], 0.0)
+
+    def test_folding_after_turn(self):
+        """Folding works correctly after turn is dealt."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+        calc.add_player_hand([Card('7', 'h'), Card('2', 'c')])
+
+        # Deal flop and turn
+        calc.deal_flop([Card('A', 'h'), Card('K', 'd'), Card('Q', 'c')])
+        calc.deal_turn(Card('J', 's'))
+
+        # Fold player 2
+        calc.fold_player(1)
+
+        equities = calc.calculate_equities(num_sims=5_000)
+
+        self.assertEqual(equities[0], 1.0)
+        self.assertEqual(equities[1], 0.0)
+
+    def test_folding_on_river_exact_calculation(self):
+        """Folding on river uses exact calculation."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+        calc.add_player_hand([Card('7', 'h'), Card('2', 'c')])
+
+        # Deal all streets
+        calc.deal_flop([Card('A', 'h'), Card('K', 'd'), Card('Q', 'c')])
+        calc.deal_turn(Card('J', 's'))
+        calc.deal_river(Card('2', 'd'))
+
+        # Fold player 2
+        calc.fold_player(1)
+
+        equities = calc.calculate_equities()  # Exact, no sims
+
+        self.assertEqual(equities[0], 1.0)
+        self.assertEqual(equities[1], 0.0)
+
+
+class TestFoldingMultiPlayer(unittest.TestCase):
+    """Test folding in multi-player scenarios."""
+
+    def test_fold_two_players_in_four_player_game(self):
+        """Fold 2 out of 4 players."""
+        calc = LiveOddsCalculator(4)
+        calc.add_player_hand([Card('A', 's'), Card('A', 'h')])
+        calc.add_player_hand([Card('7', 'd'), Card('2', 'c')])
+        calc.add_player_hand([Card('K', 's'), Card('K', 'h')])
+        calc.add_player_hand([Card('8', 'd'), Card('3', 'c')])
+
+        # Fold players 2 and 4
+        calc.fold_player(1)
+        calc.fold_player(3)
+
+        equities = calc.calculate_equities(num_sims=10_000, seed=42)
+
+        # Only players 1 and 3 have equity
+        self.assertGreater(equities[0], 0.0)
+        self.assertEqual(equities[1], 0.0)
+        self.assertGreater(equities[2], 0.0)
+        self.assertEqual(equities[3], 0.0)
+
+        # AA should have higher equity than KK
+        self.assertGreater(equities[0], equities[2])
+
+    def test_sequential_folds_in_six_player_game(self):
+        """Fold players one by one until only one remains."""
+        calc = LiveOddsCalculator(6)
+        calc.add_player_hand([Card('A', 's'), Card('A', 'h')])
+        calc.add_player_hand([Card('K', 'd'), Card('K', 'c')])
+        calc.add_player_hand([Card('Q', 's'), Card('Q', 'h')])
+        calc.add_player_hand([Card('J', 's'), Card('J', 'h')])
+        calc.add_player_hand([Card('T', 's'), Card('T', 'h')])
+        calc.add_player_hand([Card('9', 's'), Card('9', 'h')])
+
+        # Fold players 2-6 one by one
+        calc.fold_player(1)
+        equities = calc.calculate_equities(num_sims=5_000, seed=42)
+        self.assertEqual(equities[1], 0.0)
+        self.assertGreaterEqual(sum(equities.values()), 0.99)
+
+        calc.fold_player(2)
+        equities = calc.calculate_equities(num_sims=5_000, seed=42)
+        self.assertEqual(equities[2], 0.0)
+
+        calc.fold_player(3)
+        equities = calc.calculate_equities(num_sims=5_000, seed=42)
+        self.assertEqual(equities[3], 0.0)
+
+        calc.fold_player(4)
+        equities = calc.calculate_equities(num_sims=5_000, seed=42)
+        self.assertEqual(equities[4], 0.0)
+
+        calc.fold_player(5)
+        equities = calc.calculate_equities(num_sims=5_000, seed=42)
+
+        # Only player 1 remains
+        self.assertEqual(equities[0], 1.0)
+        self.assertEqual(equities[1], 0.0)
+        self.assertEqual(equities[2], 0.0)
+        self.assertEqual(equities[3], 0.0)
+        self.assertEqual(equities[4], 0.0)
+        self.assertEqual(equities[5], 0.0)
+
+    def test_folded_cards_not_in_simulation_deck(self):
+        """Folded players' cards don't appear in board simulations."""
+        calc = LiveOddsCalculator(3)
+        calc.add_player_hand([Card('A', 's'), Card('A', 'h')])
+        calc.add_player_hand([Card('K', 'd'), Card('K', 'c')])  # We'll fold that one
+        calc.add_player_hand([Card('Q', 's'), Card('Q', 'h')])
+
+        # Folding player 2
+        calc.fold_player(1)
+
+        # Now run and check that Kd/Kc never appear on board
+        known_cards = calc.get_all_known_cards()
+        known_set = set((c.rank, c.suit) for c in known_cards)
+
+        self.assertIn(('K', 'd'), known_set)
+        self.assertIn(('K', 'c'), known_set)
+
+        # The folded cards should be in known cards
+        self.assertEqual(len(known_cards), 6)  # 3 players x 2 cards each
+
+    def test_fold_order_doesnt_matter(self):
+        """Folding player 1 then 3 = folding player 3 then 1."""
+        calc1 = LiveOddsCalculator(4)
+        calc1.add_player_hand([Card('A', 's'), Card('A', 'h')])
+        calc1.add_player_hand([Card('K', 'd'), Card('K', 'c')])
+        calc1.add_player_hand([Card('Q', 's'), Card('Q', 'h')])
+        calc1.add_player_hand([Card('J', 's'), Card('J', 'h')])
+
+        calc2 = LiveOddsCalculator(4)
+        calc2.add_player_hand([Card('A', 's'), Card('A', 'h')])
+        calc2.add_player_hand([Card('K', 'd'), Card('K', 'c')])
+        calc2.add_player_hand([Card('Q', 's'), Card('Q', 'h')])
+        calc2.add_player_hand([Card('J', 's'), Card('J', 'h')])
+
+        # Fold in different order
+        calc1.fold_player(1)
+        calc1.fold_player(3)
+
+        calc2.fold_player(3)
+        calc2.fold_player(1)
+
+        # Results should be identical (with same seed)
+        equities1 = calc1.calculate_equities(num_sims=10_000, seed=42)
+        equities2 = calc2.calculate_equities(num_sims=10_000, seed=42)
+
+        for i in range(4):
+            self.assertEqual(equities1[i], equities2[i])
+
+
+class TestFoldingWithBoardCards(unittest.TestCase):
+    """Test folding interaction with board cards."""
+
+    def test_fold_pre_flop_then_deal_flop(self):
+        calc = LiveOddsCalculator(3)
+        calc.add_player_hand([Card('A', 's'), Card('A', 'h')])
+        calc.add_player_hand([Card('K', 'd'), Card('K', 'c')])
+        calc.add_player_hand([Card('7', 's'), Card('2', 'h')])
+
+        # Fold player 3 pre-flop
+        calc.fold_player(2)
+
+        # Deal flop
+        calc.deal_flop([Card('A', 'd'), Card('K', 'h'), Card('Q', 'c')])
+
+        equities = calc.calculate_equities(num_sims=5_000, seed=42)
+
+        # Player 3 still has 0% equity
+        self.assertEqual(equities[2], 0.0)
+        # Players 1 and 2 have equity
+        self.assertGreater(equities[0], 0.0)
+        self.assertGreater(equities[1], 0.0)
+
+    def test_folded_player_cards_dont_conflict_with_board(self):
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+        calc.add_player_hand([Card('Q', 'h'), Card('J', 'h')])
+
+        # Fold player 2
+        calc.fold_player(1)
+
+        # Try to deal board with Qh (should fail - already in folded hand)
+        with self.assertRaisesRegex(ValueError, "Duplicate card"):
+            calc.deal_flop([Card('Q', 'h'), Card('T', 'd'), Card('9', 'c')])
+
+    def test_fold_on_complete_board(self):
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+        calc.add_player_hand([Card('Q', 'h'), Card('J', 'h')])
+
+        # Deal complete board
+        calc.set_board([
+            Card('A', 'h'), Card('K', 'd'), Card('Q', 'c'),
+            Card('J', 's'), Card('T', 'd')
+        ])
+
+        # Both have straight, but fold player 2
+        calc.fold_player(1)
+
+        equities = calc.calculate_equities()
+
+        self.assertEqual(equities[0], 1.0)
+        self.assertEqual(equities[1], 0.0)
+
+
 if __name__ == '__main__':
     unittest.main()
