@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from src.equity import compute_heads_up_equity
+from src.equity import compute_multiway_equity
 from src.utils import get_combo_count, RANKS
 
 
@@ -34,11 +34,16 @@ def generate_all_hand_classes() -> List[str]:
     return hand_classes
 
 
-def compute_all_equities(num_sims: int = 50_000, seed: int = 42) -> pd.DataFrame:
+def compute_all_equities(
+        num_players: int = 6,
+        num_sims: int = 50_000,
+        seed: int = 42
+) -> pd.DataFrame:
     """
-    Compute heads-up equity for all 169 hand classes.
+    Compute multi-player equity for all 169 hand classes.
 
     Args:
+        num_players: Total number of players (default 6 for typical poker game)
         num_sims: Number of Monte Carlo simulations per hand
         seed: Random seed for reproducibility
 
@@ -47,11 +52,19 @@ def compute_all_equities(num_sims: int = 50_000, seed: int = 42) -> pd.DataFrame
     """
     hand_classes = generate_all_hand_classes()
     results = []
+    num_opponents = num_players - 1
 
-    print(f"Computing equity for {len(hand_classes)} hand classes ({num_sims:,} sims each)...\n")
+    print(f"Computing equity for {len(hand_classes)} hand classes")
+    print(f"Game type: {num_players}-player poker (1 vs {num_opponents} opponents)")
+    print(f"Simulations per hand: {num_sims:,}\n")
 
     for hand_class in tqdm(hand_classes, desc="Computing equities", unit="hand"):
-        equity = compute_heads_up_equity(hand_class, num_sims=num_sims, seed=seed)
+        equity = compute_multiway_equity(
+            hand_class,
+            num_opponents=num_opponents,
+            num_sims=num_sims,
+            seed=seed
+        )
         combos = get_combo_count(hand_class)
 
         results.append({
@@ -169,14 +182,16 @@ def plot_heatmap(
 
 def main():
     OUTPUT_DIR = 'outputs'
+    NUM_PLAYERS = 6
     NUM_SIMS = 50_000
     SEED = 42
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     print("=" * 20)
-    print("Pre-flop equities")
-    print("=" * 20)
+    print("Pre-flop Multi-Player Equities")
+    print("=" * 60)
+    print(f"Number of players: {NUM_PLAYERS}")
     print(f"Simulations per hand: {NUM_SIMS:,}")
     print(f"Random seed: {SEED}")
     print(f"Output directory: {OUTPUT_DIR}/")
@@ -185,7 +200,7 @@ def main():
 
     # Compute equities
     print("Step 1/5: Computing equities for all 169 hand classes...")
-    df = compute_all_equities(num_sims=NUM_SIMS, seed=SEED)
+    df = compute_all_equities(num_players=NUM_PLAYERS, num_sims=NUM_SIMS, seed=SEED)
 
     # Calculate percentiles
     print("Step 2/5: Calculating combo-weighted percentiles...")
@@ -193,7 +208,7 @@ def main():
 
     # Save CSV
     print("Step 3/5: Saving data table...")
-    csv_path = os.path.join(OUTPUT_DIR, 'preflop_equity_table.csv')
+    csv_path = os.path.join(OUTPUT_DIR, f'preflop_equity_table_{NUM_PLAYERS}player.csv')
     df.to_csv(csv_path, index=False, float_format='%.4f')
 
     # Equity heatmap
@@ -201,8 +216,8 @@ def main():
     equity_matrix = create_grid_matrix(df, 'equity') * 100
     plot_heatmap(
         equity_matrix,
-        title='Pre-Flop Heads-Up Equity (%)',
-        output_path=os.path.join(OUTPUT_DIR, 'preflop_equity_heatmap.png'),
+        title=f'Pre-Flop {NUM_PLAYERS}-Player Equity (%)',
+        output_path=os.path.join(OUTPUT_DIR, f'preflop_equity_heatmap_{NUM_PLAYERS}player.png'),
         is_percentile=False
     )
     print()
@@ -212,22 +227,27 @@ def main():
     percentile_matrix = create_grid_matrix(df, 'percentile')
     plot_heatmap(
         percentile_matrix,
-        title='Pre-Flop Hand Strength Percentile (%)',
-        output_path=os.path.join(OUTPUT_DIR, 'preflop_percentile_heatmap.png'),
+        title=f'Pre-Flop Hand Strength Percentile - {NUM_PLAYERS} Players (%)',
+        output_path=os.path.join(OUTPUT_DIR, f'preflop_percentile_heatmap_{NUM_PLAYERS}player.png'),
         is_percentile=True
     )
     print()
 
-    print("Top 5 hands by equity:")
+    print("\n" + "=" * 20)
+    print("Results")
+    print("=" * 20)
+    print(f"\nTop 5 hands by equity ({NUM_PLAYERS}-player):")
     top5 = df.nlargest(5, 'equity')[['hand_class', 'equity', 'percentile']]
     for _, row in top5.iterrows():
         print(f"  {row['hand_class']:4s}  {row['equity']*100:5.2f}%  (percentile: {row['percentile']:5.2f}%)")
-    print()
-    print("Bottom 5 hands by equity:")
+
+    print(f"\nBottom 5 hands by equity ({NUM_PLAYERS}-player):")
     bottom5 = df.nsmallest(5, 'equity')[['hand_class', 'equity', 'percentile']]
     for _, row in bottom5.iterrows():
         print(f"  {row['hand_class']:4s}  {row['equity']*100:5.2f}%  (percentile: {row['percentile']:5.2f}%)")
 
+    print("\n" + "=" * 40)
+
 
 if __name__ == '__main__':
-    main() # takes 3 mins to run
+    main()
