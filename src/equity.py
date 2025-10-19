@@ -136,3 +136,64 @@ def compute_equity_vs_hand(
             total_score += 0.5
 
     return total_score / num_sims
+
+
+def compute_multiway_equity(
+        hand_class: str,
+        num_opponents: int = 5,
+        num_sims: int = 50_000,
+        seed: int = None
+) -> float:
+    '''
+    Compute all-in equity for a starting hand class in multi-player scenario.
+
+    Simulates dealing hero a hand from hand_class, multiple random opponents,
+    and a 5-card board, then evaluates who wins. Repeats num_sims times.
+
+    Args:
+        hand_class: Hand class like "AA", "AKs", "72o"
+        num_opponents: Number of opponents
+        num_sims: Number of Monte Carlo simulations
+        seed: Optional random seed
+
+    Returns:
+        Equity as a float between 0 and 1 (e.g., 0.35 = 35% equity)
+    '''
+
+
+    if seed is not None:
+        random.seed(seed)
+
+    total_score = 0.0
+
+    for _ in range(num_sims):
+        deck = Deck()
+        deck.shuffle()
+
+        hero_hand = sample_hand_from_class(hand_class, excluded_cards=[])
+
+        for card in hero_hand:
+            for i, deck_card in enumerate(deck._cards):
+                if deck_card.rank == card.rank and deck_card.suit == card.suit:
+                    deck._cards.pop(i)
+                    break
+
+        opponent_hands = []
+        for _ in range(num_opponents):
+            opponent_hand = [deck.deal_one(), deck.deal_one()]
+            opponent_hands.append(opponent_hand)
+
+        board = [deck.deal_one() for _ in range(5)]
+
+        hero_strength = evaluate(hero_hand + board)
+        opponent_strengths = [evaluate(opp_hand + board) for opp_hand in opponent_hands]
+
+        all_strengths = [hero_strength] + opponent_strengths
+        max_strength = max(all_strengths)
+        winners = [i for i, s in enumerate(all_strengths) if s == max_strength]
+
+        if 0 in winners:
+            equity_per_winner = 1.0 / len(winners)
+            total_score += equity_per_winner
+
+    return total_score / num_sims
