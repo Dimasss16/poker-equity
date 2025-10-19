@@ -162,7 +162,7 @@ def main():
     # Pre-flop
     print("Simulating 50,000 random boards...")
 
-    equities = calc.calculate_equities(num_sims=50_000, debug=True)
+    equities = calc.calculate_equities(num_sims=50_000)
     display_equities(calc, equities, show_board=False)
 
     # Allow folding pre-flop

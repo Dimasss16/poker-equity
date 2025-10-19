@@ -166,49 +166,7 @@ class LiveOddsCalculator:
         # Fold the player
         self.folded_players.add(player_idx)
 
-    # def calculate_equities(self, num_sims: int = 10_000, seed: int = None) -> Dict[int, float]:
-    #     if len(self.player_hands) != self.num_players:
-    #         raise ValueError(f"Expected {self.num_players} players, got {len(self.player_hands)}")
-    #
-    #     if seed is not None:
-    #         random.seed(seed)
-    #
-    #     if len(self.board) == 5:
-    #         return self._calculate_exact_equities()
-    #
-    #     win_counts = [0.0] * self.num_players
-    #     cards_needed = 5 - len(self.board)
-    #
-    #     known_cards_set = set((c.rank, c.suit) for c in self.get_all_known_cards())
-    #
-    #     for _ in range(num_sims):
-    #         deck = Deck()
-    #         deck.shuffle()
-    #
-    #         available_cards = [c for c in deck._cards if (c.rank, c.suit) not in known_cards_set]
-    #
-    #         # Deal board from available cards
-    #         remaining_board = available_cards[:cards_needed]
-    #         full_board = self.board + remaining_board
-    #
-    #         # Evaluate all hands
-    #         strengths = {}
-    #         for player_idx in range(self.num_players):
-    #             player_hand = self.player_hands[player_idx]
-    #             strength = evaluate(player_hand + full_board)
-    #             strengths[player_idx] = strength
-    #
-    #         # Determine winner(s)
-    #         max_strength = max(strengths.values())
-    #         winners = [i for i, s in strengths.items() if s == max_strength]
-    #
-    #         equity_per_winner = 1.0 / len(winners)
-    #         for winner_idx in winners:
-    #             win_counts[winner_idx] += equity_per_winner
-    #
-    #     equities = {i: count / num_sims for i, count in enumerate(win_counts)}
-    #     return equities
-    def calculate_equities(self, num_sims: int = 10_000, seed: int = None, debug: bool = False) -> Dict[int, float]:
+    def calculate_equities(self, num_sims: int = 10_000, seed: int = None) -> Dict[int, float]:
         """
         Calculate win probability for each player.
 
@@ -218,7 +176,6 @@ class LiveOddsCalculator:
         Args:
             num_sims: Number of Monte Carlo simulations
             seed: Random seed for reproducibility
-            debug: If True, print debug info for first simulation
 
         Returns:
             Dict mapping player index to equity (0.0-1.0)
@@ -272,18 +229,6 @@ class LiveOddsCalculator:
             # Determine winner(s) among active players
             max_strength = max(strengths.values())
             winners = [i for i, s in strengths.items() if s == max_strength]
-
-            # DEBUG: Log first simulation
-            if debug and sim_idx == 0:
-                print("\n[DEBUG] First Simulation:")
-                print(f"  Known cards: {[(c.rank, c.suit) for c in self.get_all_known_cards()]}")
-                print(f"  Active players: {active_players}")
-                print(f"  Folded players: {list(self.folded_players)}")
-                print(f"  Board dealt: {[(c.rank, c.suit) for c in remaining_board]}")
-                for p_idx in active_players:
-                    hand = self.player_hands[p_idx]
-                    print(f"  Player {p_idx}: {[(c.rank, c.suit) for c in hand]} = strength {strengths[p_idx]}")
-                print(f"  Winners: {winners}\n")
 
             # Award equity (split if tie)
             equity_per_winner = 1.0 / len(winners)
