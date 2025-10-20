@@ -744,5 +744,220 @@ class TestFoldingWithBoardCards(unittest.TestCase):
         self.assertEqual(equities[1], 0.0)
 
 
+class TestOutcomeProbabilityDisplayVariables(unittest.TestCase):
+    """Test that outcome probability display variables are updated correctly."""
+
+    def test_display_variables_updated_after_normal_calculation(self):
+        """Display variables are set after normal equity calculation."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('A', 's'), Card('A', 'h')])
+        calc.add_player_hand([Card('K', 'd'), Card('K', 'c')])
+
+        equities = calc.calculate_equities(num_sims=5_000, seed=42)
+
+        # Check that display variables exist and are populated
+        self.assertIsNotNone(calc.last_outright_win_probabilities)
+        self.assertIsNotNone(calc.last_split_probability)
+
+        # Check that they contain data for all players
+        self.assertEqual(len(calc.last_outright_win_probabilities), 2)
+
+        # Outcome probabilities should sum to ~100%
+        total_outcomes = (
+                calc.last_outright_win_probabilities[0] +
+                calc.last_outright_win_probabilities[1] +
+                calc.last_split_probability
+        )
+        self.assertGreaterEqual(total_outcomes, 0.98)
+        self.assertLessEqual(total_outcomes, 1.02)
+
+    def test_display_variables_updated_when_one_player_remains(self):
+        """Display variables update correctly when only one player remains after folding."""
+        calc = LiveOddsCalculator(3)
+        calc.add_player_hand([Card('A', 's'), Card('A', 'h')])
+        calc.add_player_hand([Card('K', 'd'), Card('K', 'c')])
+        calc.add_player_hand([Card('Q', 's'), Card('Q', 'h')])
+
+        calc.fold_player(1)
+        calc.fold_player(2)
+
+        equities = calc.calculate_equities()
+
+        self.assertEqual(equities[0], 1.0)
+        self.assertEqual(equities[1], 0.0)
+        self.assertEqual(equities[2], 0.0)
+
+        # Check display variables are updated (just fixed this bug now)
+        self.assertEqual(calc.last_outright_win_probabilities[0], 1.0)
+        self.assertEqual(calc.last_outright_win_probabilities[1], 0.0)
+        self.assertEqual(calc.last_outright_win_probabilities[2], 0.0)
+
+        # No split should be possible with one player
+        self.assertEqual(calc.last_split_probability, 0.0)
+
+        # Outcome probabilities sum to exactly 100%
+        total_outcomes = (
+                calc.last_outright_win_probabilities[0] +
+                calc.last_outright_win_probabilities[1] +
+                calc.last_outright_win_probabilities[2] +
+                calc.last_split_probability
+        )
+        self.assertEqual(total_outcomes, 1.0)
+
+    def test_outcome_probabilities_sum_to_one(self):
+        """Outcome probabilities always sum to exactly 1.0."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('9', 's'), Card('9', 'h')])
+        calc.add_player_hand([Card('8', 'd'), Card('8', 'c')])
+
+        equities = calc.calculate_equities(num_sims=10_000, seed=42)
+
+        # Sum of all outcome probabilities
+        total = (
+                calc.last_outright_win_probabilities[0] +
+                calc.last_outright_win_probabilities[1] +
+                calc.last_split_probability
+        )
+
+        # Should be 1.0 within small tolerance
+        self.assertAlmostEqual(total, 1.0, places=2)
+
+    def test_display_variables_with_guaranteed_split(self):
+        """Display variables correct when split is guaranteed."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('2', 's'), Card('3', 'h')])
+        calc.add_player_hand([Card('4', 'd'), Card('5', 'c')])
+
+        # Board makes royal flush
+        calc.set_board([
+            Card('A', 'h'), Card('K', 'h'), Card('Q', 'h'),
+            Card('J', 'h'), Card('T', 'h')
+        ])
+
+        equities = calc.calculate_equities()
+
+        # Both players have 50% equity
+        self.assertEqual(equities[0], 0.5)
+        self.assertEqual(equities[1], 0.5)
+
+        # Outcome: no outright wins, 100% split
+        self.assertEqual(calc.last_outright_win_probabilities[0], 0.0)
+        self.assertEqual(calc.last_outright_win_probabilities[1], 0.0)
+        self.assertEqual(calc.last_split_probability, 1.0)
+
+    def test_display_variables_with_no_splits(self):
+        """Display variables correct when one player dominates."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+        calc.add_player_hand([Card('2', 'd'), Card('3', 'c')])
+
+        # Board gives player 1 two pair, player 2 nothing
+        calc.set_board([
+            Card('A', 'h'), Card('K', 'd'), Card('Q', 'c'),
+            Card('J', 's'), Card('9', 'h')
+        ])
+
+        equities = calc.calculate_equities()
+
+        # Player 1 wins 100%
+        self.assertEqual(equities[0], 1.0)
+        self.assertEqual(equities[1], 0.0)
+
+        # Outcome: player 1 wins outright, no split
+        self.assertEqual(calc.last_outright_win_probabilities[0], 1.0)
+        self.assertEqual(calc.last_outright_win_probabilities[1], 0.0)
+        self.assertEqual(calc.last_split_probability, 0.0)
+
+    def test_display_variables_persist_across_calculations(self):
+        """Display variables update with each new calculation."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('A', 's'), Card('A', 'h')])
+        calc.add_player_hand([Card('K', 'd'), Card('K', 'c')])
+
+        # First calculation: pre-flop
+        equities1 = calc.calculate_equities(num_sims=5_000, seed=42)
+        outcome1_p1 = calc.last_outright_win_probabilities[0]
+
+        # Deal flop favoring player 1
+        calc.deal_flop([Card('A', 'd'), Card('A', 'c'), Card('2', 'h')])
+
+        # Second calculation: flop
+        equities2 = calc.calculate_equities(num_sims=5_000, seed=42)
+        outcome2_p1 = calc.last_outright_win_probabilities[0]
+
+        # Player 1's outright win probability should increase (has quads now)
+        self.assertGreater(outcome2_p1, outcome1_p1)
+
+    def test_display_variables_with_three_players(self):
+        """Display variables work correctly with three players."""
+        calc = LiveOddsCalculator(3)
+        calc.add_player_hand([Card('A', 's'), Card('A', 'h')])
+        calc.add_player_hand([Card('K', 'd'), Card('K', 'c')])
+        calc.add_player_hand([Card('Q', 's'), Card('Q', 'h')])
+
+        equities = calc.calculate_equities(num_sims=10_000, seed=42)
+
+        # All three players should have outcome probabilities
+        self.assertGreater(calc.last_outright_win_probabilities[0], 0.0)
+        self.assertGreater(calc.last_outright_win_probabilities[1], 0.0)
+        self.assertGreater(calc.last_outright_win_probabilities[2], 0.0)
+
+        # Sum of all outcomes should be ~100%
+        total = (
+                calc.last_outright_win_probabilities[0] +
+                calc.last_outright_win_probabilities[1] +
+                calc.last_outright_win_probabilities[2] +
+                calc.last_split_probability
+        )
+        self.assertGreaterEqual(total, 0.98)
+        self.assertLessEqual(total, 1.02)
+
+    def test_display_variables_after_fold_then_unfold_scenario(self):
+        """Display variables correct after folding reduces to one player."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+        calc.add_player_hand([Card('Q', 'h'), Card('J', 'h')])
+
+        # Initial calculation
+        equities1 = calc.calculate_equities(num_sims=5_000, seed=42)
+
+        # Both should have non-zero outcome probabilities
+        self.assertGreater(calc.last_outright_win_probabilities[0], 0.0)
+        self.assertGreater(calc.last_outright_win_probabilities[1], 0.0)
+
+        # Fold player 2
+        calc.fold_player(1)
+        equities2 = calc.calculate_equities()
+
+        # Player 1 should now have 100% outcome probability
+        self.assertEqual(calc.last_outright_win_probabilities[0], 1.0)
+        self.assertEqual(calc.last_outright_win_probabilities[1], 0.0)
+        self.assertEqual(calc.last_split_probability, 0.0)
+
+    def test_equity_vs_outcome_probability_difference(self):
+        """Equity and outcome probability differ when splits occur."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('9', 's'), Card('9', 'h')])
+        calc.add_player_hand([Card('9', 'd'), Card('9', 'c')])
+
+        # Both have pocket 9s - many splits expected
+        equities = calc.calculate_equities(num_sims=10_000, seed=42)
+
+        # Equity should be close to 50/50
+        self.assertAlmostEqual(equities[0], 0.5, places=1)
+        self.assertAlmostEqual(equities[1], 0.5, places=1)
+
+        # But outcome probabilities should show splits
+        # Both should have some outright wins
+        self.assertGreater(calc.last_outright_win_probabilities[0], 0.0)
+        self.assertGreater(calc.last_outright_win_probabilities[1], 0.0)
+
+        # And significant split probability
+        self.assertGreater(calc.last_split_probability, 0.1)
+
+        # The main difference is that equity includes half of split probability
+        # while outcome probability separates "win outright" from "split"
+
+
 if __name__ == '__main__':
     unittest.main()
