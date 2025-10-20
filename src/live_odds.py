@@ -189,10 +189,20 @@ class LiveOddsCalculator:
         # Get active players
         active_players = self.get_active_players()
 
-        # If only 1 active player, they have 100% equity
         if len(active_players) == 1:
             equities = {i: 0.0 for i in range(self.num_players)}
             equities[active_players[0]] = 1.0
+
+            # Update outcome probabilities for display
+            self.last_outright_win_probabilities = {}
+            for i in range(self.num_players):
+                if i == active_players[0]:
+                    self.last_outright_win_probabilities[i] = 1.0  # Winner gets 100%
+                else:
+                    self.last_outright_win_probabilities[i] = 0.0  # Everyone else 0%
+
+            self.last_split_probability = 0.0  # No split possible with 1 player
+
             return equities
 
         if seed is not None:
@@ -348,8 +358,8 @@ def parse_cards_string(cards_str: str) -> List[Card]:
         List of Card objects
 
     Examples:
-        'As Kh' → [Card('A', 's'), Card('K', 'h')]
-        'Qd Qs' → [Card('Q', 'd'), Card('Q', 's')]
+        'As Kh' -> [Card('A', 's'), Card('K', 'h')]
+        'Qd Qs' -> [Card('Q', 'd'), Card('Q', 's')]
     """
     card_strings = cards_str.strip().split()
     return [parse_card_string(cs) for cs in card_strings]

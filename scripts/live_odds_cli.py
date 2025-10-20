@@ -185,14 +185,27 @@ def main():
     display_equities(calc, equities, show_board=False)
 
     # Allow folding pre-flop
-    while handle_fold_commands(calc, "the flop"):
+    while handle_fold_commands(calc, next_street="the turn"):
         print("=" * 30)
-        print("Updated pre-flop equities")
+        print("Updated flop equities")
         print("=" * 30)
         print("Recalculating with remaining players...")
         equities = calc.calculate_equities(num_sims=50_000)
-        display_equities(calc, equities, show_board=False)
+        display_equities(calc, equities)
 
+        # Check if only one player remains
+        active_players = calc.get_active_players()
+        if len(active_players) == 1:
+            winner_idx = active_players[0]
+            winner_name = "You" if winner_idx == 0 else f"Player {winner_idx + 1}"
+            if winner_name == "You":
+                print(f"\n{winner_name} win, all others folded!")
+            else:
+                print(f"{winner_name} wins, all others folded)!")
+            print()
+            return  # We're done here
+
+    # Deal flop
     print()
     while True:
         try:
@@ -226,6 +239,18 @@ def main():
         equities = calc.calculate_equities(num_sims=50_000)
         display_equities(calc, equities)
 
+        # Check if only one player remains
+        active_players = calc.get_active_players()
+        if len(active_players) == 1:
+            winner_idx = active_players[0]
+            winner_name = "You" if winner_idx == 0 else f"Player {winner_idx + 1}"
+            if winner_name == "You":
+                print(f"\n{winner_name} win, all others folded!")
+            else:
+                print(f"{winner_name} wins, all others folded)!")
+            print()
+            return  # We're done here
+
     # Deal turn
     print()
     while True:
@@ -252,13 +277,25 @@ def main():
     display_equities(calc, equities)
 
     # Allow folding on turn
-    while handle_fold_commands(calc, next_street="the river"):
+    while handle_fold_commands(calc, next_street="the turn"):
         print("=" * 30)
-        print("Updated turn equities")
+        print("Updated flop equities")
         print("=" * 30)
         print("Recalculating with remaining players...")
-        equities = calc.calculate_equities(num_sims=10_000)
+        equities = calc.calculate_equities(num_sims=50_000)
         display_equities(calc, equities)
+
+        # Check if only one player remains
+        active_players = calc.get_active_players()
+        if len(active_players) == 1:
+            winner_idx = active_players[0]
+            winner_name = "You" if winner_idx == 0 else f"Player {winner_idx + 1}"
+            if winner_name == "You":
+                print(f"\n{winner_name} win, all others folded!")
+            else:
+                print(f"{winner_name} wins, all others folded)!")
+            print()
+            return  # We're done here
 
     # Deal river
     print()
