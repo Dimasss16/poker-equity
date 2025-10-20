@@ -40,6 +40,15 @@ Pre-flop hand percentiles account for both equity and combination frequency. Whi
 
 Percentiles rank all 1,326 possible starting hands from strongest to weakest, showing what percentage of hands are stronger than yours. The heatmaps showing this can be found in `src/outputs/`.
 
+## Folding Functionality
+
+We also allow players to fold at any time like it happens in real games. When a player folds, their hand is removed from equity calculations.
+After displaying equity, the calculator prompts for fold commands (typing `f2`, `f3`, `f4` folds the respective player). When a fold occurs, equity recalculates for remaining players. Folded players display with zero percent equity and a `[FOLDED]` marker.
+
+Folded cards are treated as dead money that cannot win or appear on future community cards.
+Multiple players can fold sequentially. If four players start and two fold on the flop, turn equity calculations only consider the remaining two players. Their combined equity always sums to one hundred percent. The system prevents folding when only one player remains.
+Fold decisions are permanent and irreversible. A player who folds pocket aces that would have made a full house still receives zero equity. The calculator analyzes decisions rather than enforcing game rules.
+
 ## Usage
 
 ### Live Odds Calculator
