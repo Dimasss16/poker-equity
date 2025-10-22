@@ -338,3 +338,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    # TODO: check if the folded cards are used in simulations, cuz they should not be

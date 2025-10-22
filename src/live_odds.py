@@ -120,6 +120,12 @@ class LiveOddsCalculator:
     def deal_river(self, card: Card):
         if len(self.board) != 4:
             raise ValueError("Must deal turn before river")
+
+        # Validate card doesn't conflict
+        all_known = self.get_all_known_cards()
+        validate_unique_cards(all_known + [card])
+        validate_rank_count(all_known + [card])
+
         self.board.append(card)
         self.street = 'river'
 
