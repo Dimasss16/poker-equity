@@ -428,7 +428,7 @@ class TestFoldingEdgeCases(unittest.TestCase):
         calc.add_player_hand([Card('K', 'd'), Card('K', 'c')])
         calc.add_player_hand([Card('Q', 's'), Card('Q', 'h')])
 
-        # Trying to fold player 5 (doesn't exist)
+        # Trying to fold player 5 which doesn't exist
         with self.assertRaisesRegex(ValueError, "Invalid player index"):
             calc.fold_player(5)
 
@@ -480,8 +480,6 @@ class TestFoldingEdgeCases(unittest.TestCase):
 
 
 class TestFoldingEquityCalculation(unittest.TestCase):
-    """Test equity calculations with folded players."""
-
     def test_last_player_standing_has_100_percent(self):
         """When only 1 player remains, they have 100% equity."""
         calc = LiveOddsCalculator(3)
@@ -690,8 +688,6 @@ class TestFoldingMultiPlayer(unittest.TestCase):
 
 
 class TestFoldingWithBoardCards(unittest.TestCase):
-    """Test folding interaction with board cards."""
-
     def test_fold_pre_flop_then_deal_flop(self):
         calc = LiveOddsCalculator(3)
         calc.add_player_hand([Card('A', 's'), Card('A', 'h')])
@@ -745,8 +741,6 @@ class TestFoldingWithBoardCards(unittest.TestCase):
 
 
 class TestOutcomeProbabilityDisplayVariables(unittest.TestCase):
-    """Test that outcome probability display variables are updated correctly."""
-
     def test_display_variables_updated_after_normal_calculation(self):
         """Display variables are set after normal equity calculation."""
         calc = LiveOddsCalculator(2)
@@ -772,7 +766,6 @@ class TestOutcomeProbabilityDisplayVariables(unittest.TestCase):
         self.assertLessEqual(total_outcomes, 1.02)
 
     def test_display_variables_updated_when_one_player_remains(self):
-        """Display variables update correctly when only one player remains after folding."""
         calc = LiveOddsCalculator(3)
         calc.add_player_hand([Card('A', 's'), Card('A', 'h')])
         calc.add_player_hand([Card('K', 'd'), Card('K', 'c')])
@@ -805,7 +798,6 @@ class TestOutcomeProbabilityDisplayVariables(unittest.TestCase):
         self.assertEqual(total_outcomes, 1.0)
 
     def test_outcome_probabilities_sum_to_one(self):
-        """Outcome probabilities always sum to exactly 1.0."""
         calc = LiveOddsCalculator(2)
         calc.add_player_hand([Card('9', 's'), Card('9', 'h')])
         calc.add_player_hand([Card('8', 'd'), Card('8', 'c')])
@@ -823,7 +815,6 @@ class TestOutcomeProbabilityDisplayVariables(unittest.TestCase):
         self.assertAlmostEqual(total, 1.0, places=2)
 
     def test_display_variables_with_guaranteed_split(self):
-        """Display variables correct when split is guaranteed."""
         calc = LiveOddsCalculator(2)
         calc.add_player_hand([Card('2', 's'), Card('3', 'h')])
         calc.add_player_hand([Card('4', 'd'), Card('5', 'c')])
@@ -846,7 +837,6 @@ class TestOutcomeProbabilityDisplayVariables(unittest.TestCase):
         self.assertEqual(calc.last_split_probability, 1.0)
 
     def test_display_variables_with_no_splits(self):
-        """Display variables correct when one player dominates."""
         calc = LiveOddsCalculator(2)
         calc.add_player_hand([Card('A', 's'), Card('K', 's')])
         calc.add_player_hand([Card('2', 'd'), Card('3', 'c')])
@@ -1122,7 +1112,7 @@ class TestDuplicateCardDetection(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Duplicate card"):
             calc.deal_river(Card('Q', 'h'))
 
-    # ===== SET_BOARD DUPLICATES =====
+    # ===== set_board =====
 
     def test_set_board_with_internal_duplicates(self):
         """Cannot set board with duplicate cards within itself."""
@@ -1150,7 +1140,7 @@ class TestDuplicateCardDetection(unittest.TestCase):
                 Card('8', 's'), Card('7', 'h')
             ])
 
-    # ===== RANK COUNT VALIDATION =====
+    # ===== Rank counts =====
 
     def test_five_cards_of_same_rank_rejected(self):
         """Cannot have 5 cards of the same rank."""
@@ -1173,7 +1163,7 @@ class TestDuplicateCardDetection(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Duplicate card"):
             calc.deal_flop([Card('K', 'c'), Card('K', 's'), Card('Q', 'h')])
 
-    # ===== FOLDED PLAYERS DUPLICATES =====
+    # ===== Folded players duplicates =====
 
     def test_folded_player_cards_prevent_duplicates(self):
         """Folded players' cards still prevent duplicates on board."""
@@ -1219,6 +1209,255 @@ class TestDuplicateCardDetection(unittest.TestCase):
         # Try to deal king of spades (folded player has it)
         with self.assertRaisesRegex(ValueError, "Duplicate card"):
             calc.deal_river(Card('K', 's'))
+
+
+class TestFoldedCardsNotInSimulations(unittest.TestCase):
+    """Test that folded players' cards never appear in simulated boards."""
+
+    def test_folded_cards_in_known_cards_list(self):
+        """Folded players' cards should be in the known cards list."""
+        calc = LiveOddsCalculator(3)
+        calc.add_player_hand([Card('A', 's'), Card('A', 'h')])
+        calc.add_player_hand([Card('K', 'd'), Card('K', 'c')])
+        calc.add_player_hand([Card('Q', 's'), Card('Q', 'h')])
+
+        # Before folding: 6 known cards (3 players x 2 cards)
+        known_before = calc.get_all_known_cards()
+        self.assertEqual(len(known_before), 6)
+
+        # Fold player 2
+        calc.fold_player(1)
+
+        # After folding: still 6 known cards (folded cards still be in the known)
+        known_after = calc.get_all_known_cards()
+        self.assertEqual(len(known_after), 6)
+
+        # Verify Kd and Kc are in known cards
+        known_set = set((c.rank, c.suit) for c in known_after)
+        self.assertIn(('K', 'd'), known_set)
+        self.assertIn(('K', 'c'), known_set)
+
+    def test_folded_cards_excluded_from_deck_filtering(self):
+        """Folded cards should be excluded when filtering deck."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+        calc.add_player_hand([Card('Q', 'h'), Card('J', 'h')])
+
+        # Fold player 2
+        calc.fold_player(1)
+
+        # Get known cards (should include folded Qh and Jh)
+        known_cards = calc.get_all_known_cards()
+        known_set = set((c.rank, c.suit) for c in known_cards)
+
+        # Verify folded cards are known
+        self.assertIn(('Q', 'h'), known_set)
+        self.assertIn(('J', 'h'), known_set)
+
+        # The deck should have 48 cards remaining (52 - 4 known)
+        from src.deck import Deck
+        deck = Deck()
+        available = [c for c in deck._cards if (c.rank, c.suit) not in known_set]
+        self.assertEqual(len(available), 48)
+
+        # Verify folded cards NOT in available cards
+        available_set = set((c.rank, c.suit) for c in available)
+        self.assertNotIn(('Q', 'h'), available_set)
+        self.assertNotIn(('J', 'h'), available_set)
+
+    def test_folded_specific_cards_never_on_board(self):
+        """Run simulation and verify folded cards never appear on board."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('7', 's'), Card('2', 'h')])  # Trash hand
+        calc.add_player_hand([Card('A', 'c'), Card('K', 'c')])  # Strong hand
+
+        # Fold player 1 (7s, 2h)
+        calc.fold_player(0)
+
+        # Run many simulations and track which cards appear
+        num_sims = 100000
+        boards_seen = []
+
+        from src.deck import Deck
+        known_cards_set = set((c.rank, c.suit) for c in calc.get_all_known_cards())
+
+        for _ in range(num_sims):
+            deck = Deck()
+            deck.shuffle()
+
+            # Filter like the real calculate_equities does
+            available_cards = [c for c in deck._cards if (c.rank, c.suit) not in known_cards_set]
+
+            # Deal 5-card board
+            board = available_cards[:5]
+            boards_seen.append(board)
+
+            # Check that folded cards (7s, 2h) never appear
+            for card in board:
+                self.assertFalse(
+                    card.rank == '7' and card.suit == 's',
+                    f"Folded card 7s appeared on board!"
+                )
+                self.assertFalse(
+                    card.rank == '2' and card.suit == 'h',
+                    f"Folded card 2h appeared on board!"
+                )
+
+        # If we got here, no folded cards appeared in 100000 boards
+        self.assertEqual(len(boards_seen), 100000)
+
+    def test_equity_changes_correctly_after_fold(self):
+        """Folding should change equity in expected ways."""
+        calc = LiveOddsCalculator(3)
+        # Player 1: Trash
+        # Player 2: Top pair
+        # Player 3: Medium pair
+        calc.add_player_hand([Card('7', 's'), Card('2', 'h')])
+        calc.add_player_hand([Card('A', 'c'), Card('A', 'd')])
+        calc.add_player_hand([Card('8', 'h'), Card('8', 's')])
+
+        # Calculate before fold
+        equity_before = calc.calculate_equities(num_sims=50_000, seed=42)
+
+        # Player 2 should have highest equity
+        self.assertGreater(equity_before[1], equity_before[0])
+        self.assertGreater(equity_before[1], equity_before[2])
+
+        # Fold the trash hand
+        calc.fold_player(0)
+
+        # Calculate after fold
+        equity_after = calc.calculate_equities(num_sims=50_000, seed=42)
+
+        # Player 1 should have 0%
+        self.assertEqual(equity_after[0], 0.0)
+
+        # Player 2's equity should increase (fewer opponents)
+        self.assertGreater(equity_after[1], equity_before[1])
+
+        # Player 3's equity should also increase
+        self.assertGreater(equity_after[2], equity_before[2])
+
+        # Active players sum to 100%
+        self.assertAlmostEqual(equity_after[1] + equity_after[2], 1.0, places=2)
+
+    def test_folded_cards_affect_outs_calculation(self):
+        """Folding should affect the number of available outs."""
+        calc = LiveOddsCalculator(2)
+        # We have a flush draw
+        calc.add_player_hand([Card('K', 'c'), Card('Q', 'c')])
+        # Opponent has two clubs
+        calc.add_player_hand([Card('9', 'c'), Card('8', 'c')])
+
+        # Flop: Two clubs
+        calc.deal_flop([Card('A', 'c'), Card('7', 'h'), Card('2', 'd')])
+
+        # Scenario 1: Opponent still active (they have 9c, 8c)
+        # We need one more club for flush
+        # 13 clubs - 4 on board/in hands = 9 clubs remain, but 2 are in opponent's hand
+        # So effectively 7 "clean" flush outs from our perspective
+
+        equity_active = calc.calculate_equities(num_sims=100_000, seed=42)
+
+        # Reset and fold opponent
+        calc2 = LiveOddsCalculator(2)
+        calc2.add_player_hand([Card('K', 'c'), Card('Q', 'c')])
+        calc2.add_player_hand([Card('9', 'c'), Card('8', 'c')])
+        calc2.deal_flop([Card('A', 'c'), Card('7', 'h'), Card('2', 'd')])
+        calc2.fold_player(1)
+
+        equity_folded = calc2.calculate_equities(num_sims=100_000, seed=42)
+
+        # When opponent folds, we should have 100% (they can't beat us)
+        self.assertEqual(equity_folded[0], 1.0)
+        self.assertEqual(equity_folded[1], 0.0)
+
+        # Verify opponent's clubs (9c, 8c) are in known cards
+        known = calc2.get_all_known_cards()
+        known_set = set((c.rank, c.suit) for c in known)
+        self.assertIn(('9', 'c'), known_set)
+        self.assertIn(('8', 'c'), known_set)
+
+    def test_multiple_folded_players_all_excluded(self):
+        """When multiple players fold, all their cards are excluded."""
+        calc = LiveOddsCalculator(4)
+        calc.add_player_hand([Card('A', 's'), Card('A', 'h')])
+        calc.add_player_hand([Card('K', 'd'), Card('K', 'c')])  # Will fold
+        calc.add_player_hand([Card('Q', 's'), Card('Q', 'h')])  # Will fold
+        calc.add_player_hand([Card('J', 's'), Card('J', 'h')])
+
+        # Fold players 2 and 3
+        calc.fold_player(1)
+        calc.fold_player(2)
+
+        # Known cards should include all 4 players' cards
+        known = calc.get_all_known_cards()
+        self.assertEqual(len(known), 8)
+
+        # Verify all folded cards are known
+        known_set = set((c.rank, c.suit) for c in known)
+        self.assertIn(('K', 'd'), known_set)
+        self.assertIn(('K', 'c'), known_set)
+        self.assertIn(('Q', 's'), known_set)
+        self.assertIn(('Q', 'h'), known_set)
+
+        # Run simulation and verify none of these 4 cards appear
+        from src.deck import Deck
+
+        for _ in range(10000):
+            deck = Deck()
+            deck.shuffle()
+            available = [c for c in deck._cards if (c.rank, c.suit) not in known_set]
+            board = available[:5]
+
+            for card in board:
+                # None of the folded kings or queens should appear
+                self.assertFalse(
+                    (card.rank == 'K' and card.suit in ['d', 'c']) or
+                    (card.rank == 'Q' and card.suit in ['s', 'h']),
+                    f"Folded card {card.rank}{card.suit} appeared on board!"
+                )
+
+    def test_folded_cards_with_partial_board(self):
+        """Folded cards don't appear on turn/river."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+        calc.add_player_hand([Card('T', 'h'), Card('9', 'h')])
+
+        # Deal flop
+        calc.deal_flop([Card('2', 'c'), Card('3', 'd'), Card('4', 's')])
+
+        # Fold player 2
+        calc.fold_player(1)
+
+        # Get known cards
+        known = calc.get_all_known_cards()
+        known_set = set((c.rank, c.suit) for c in known)
+
+        # Verify folded cards are known
+        self.assertIn(('T', 'h'), known_set)
+        self.assertIn(('9', 'h'), known_set)
+
+        # Simulate dealing turn/river many times
+        from src.deck import Deck
+
+        for _ in range(25000):
+            deck = Deck()
+            deck.shuffle()
+            available = [c for c in deck._cards if (c.rank, c.suit) not in known_set]
+
+            # Deal turn and river
+            turn_river = available[:2]
+
+            for card in turn_river:
+                self.assertFalse(
+                    card.rank == 'T' and card.suit == 'h',
+                    "Folded card Th appeared on turn/river!"
+                )
+                self.assertFalse(
+                    card.rank == '9' and card.suit == 'h',
+                    "Folded card 9h appeared on turn/river!"
+                )
 
 
 if __name__ == '__main__':
