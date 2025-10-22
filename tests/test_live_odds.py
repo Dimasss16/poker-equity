@@ -959,5 +959,267 @@ class TestOutcomeProbabilityDisplayVariables(unittest.TestCase):
         # while outcome probability separates "win outright" from "split"
 
 
+class TestDuplicateCardDetection(unittest.TestCase):
+    # ===== Pre-flop duplicates =====
+
+    def test_duplicate_within_single_hand(self):
+        """Cannot add a hand with duplicate cards."""
+        calc = LiveOddsCalculator(2)
+
+        with self.assertRaisesRegex(ValueError, "Duplicate card"):
+            calc.add_player_hand([Card('A', 's'), Card('A', 's')])
+
+    def test_duplicate_between_player_hands(self):
+        """Cannot add hands that share cards between players."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+
+        # Try to add same ace
+        with self.assertRaisesRegex(ValueError, "Duplicate card"):
+            calc.add_player_hand([Card('A', 's'), Card('Q', 'h')])
+
+    def test_duplicate_across_three_players(self):
+        """Duplicate detection works with 3+ players."""
+        calc = LiveOddsCalculator(3)
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+        calc.add_player_hand([Card('Q', 'h'), Card('J', 'h')])
+
+        # Try to add king of spades (player 1 already has it)
+        with self.assertRaisesRegex(ValueError, "Duplicate card"):
+            calc.add_player_hand([Card('K', 's'), Card('T', 'd')])
+
+    # ===== Flop duplicates =====
+
+    def test_duplicate_within_flop(self):
+        """Cannot deal flop with duplicate cards."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+        calc.add_player_hand([Card('Q', 'h'), Card('J', 'h')])
+
+        # Flop with duplicate
+        with self.assertRaisesRegex(ValueError, "Duplicate card"):
+            calc.deal_flop([Card('T', 'd'), Card('T', 'd'), Card('9', 'c')])
+
+    def test_flop_duplicates_player_card(self):
+        """Cannot deal flop card that matches a hole card."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+        calc.add_player_hand([Card('Q', 'h'), Card('J', 'h')])
+
+        # Try to deal ace of spades on flop
+        with self.assertRaisesRegex(ValueError, "Duplicate card"):
+            calc.deal_flop([Card('A', 's'), Card('T', 'd'), Card('9', 'c')])
+
+    def test_flop_duplicates_second_player_card(self):
+        """Flop duplicate detection checks all players."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+        calc.add_player_hand([Card('Q', 'h'), Card('J', 'h')])
+
+        # Try to deal queen of hearts (player 2 has it)
+        with self.assertRaisesRegex(ValueError, "Duplicate card"):
+            calc.deal_flop([Card('Q', 'h'), Card('T', 'd'), Card('9', 'c')])
+
+    def test_flop_duplicates_in_four_player_game(self):
+        """Flop duplicate detection works with 4 players."""
+        calc = LiveOddsCalculator(4)
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+        calc.add_player_hand([Card('Q', 'h'), Card('J', 'h')])
+        calc.add_player_hand([Card('T', 'd'), Card('9', 'd')])
+        calc.add_player_hand([Card('8', 'c'), Card('7', 'c')])
+
+        # Try to deal 9 of diamonds (player 3 has it)
+        with self.assertRaisesRegex(ValueError, "Duplicate card"):
+            calc.deal_flop([Card('9', 'd'), Card('5', 's'), Card('2', 'h')])
+
+    # ===== Turn duplicates =====
+
+    def test_turn_duplicates_hole_card(self):
+        """Cannot deal turn card that matches a hole card."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+        calc.add_player_hand([Card('Q', 'h'), Card('J', 'h')])
+        calc.deal_flop([Card('T', 'd'), Card('9', 'c'), Card('8', 's')])
+
+        # Try to deal king of spades on turn
+        with self.assertRaisesRegex(ValueError, "Duplicate card"):
+            calc.deal_turn(Card('K', 's'))
+
+    def test_turn_duplicates_flop_card(self):
+        """Cannot deal turn card that matches a flop card."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+        calc.add_player_hand([Card('Q', 'h'), Card('J', 'h')])
+        calc.deal_flop([Card('T', 'd'), Card('9', 'c'), Card('8', 's')])
+
+        # Try to deal ten of diamonds on turn (already on flop)
+        with self.assertRaisesRegex(ValueError, "Duplicate card"):
+            calc.deal_turn(Card('T', 'd'))
+
+    def test_turn_duplicates_in_three_player_game(self):
+        """Turn duplicate detection works with 3 players."""
+        calc = LiveOddsCalculator(3)
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+        calc.add_player_hand([Card('Q', 'h'), Card('J', 'h')])
+        calc.add_player_hand([Card('T', 'd'), Card('9', 'd')])
+        calc.deal_flop([Card('8', 'c'), Card('7', 'c'), Card('6', 's')])
+
+        # Try to deal 9 of diamonds (player 3 has it)
+        with self.assertRaisesRegex(ValueError, "Duplicate card"):
+            calc.deal_turn(Card('9', 'd'))
+
+    # ===== River duplicates =====
+
+    def test_river_duplicates_hole_card(self):
+        """Cannot deal river card that matches a hole card."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+        calc.add_player_hand([Card('Q', 'h'), Card('J', 'h')])
+        calc.deal_flop([Card('T', 'd'), Card('9', 'c'), Card('8', 's')])
+        calc.deal_turn(Card('7', 'h'))
+
+        # Try to deal ace of spades on river
+        with self.assertRaisesRegex(ValueError, "Duplicate card"):
+            calc.deal_river(Card('A', 's'))
+
+    def test_river_duplicates_flop_card(self):
+        """Cannot deal river card that matches a flop card."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+        calc.add_player_hand([Card('Q', 'h'), Card('J', 'h')])
+        calc.deal_flop([Card('T', 'd'), Card('9', 'c'), Card('8', 's')])
+        calc.deal_turn(Card('7', 'h'))
+
+        # Try to deal nine of clubs on river (already on flop)
+        with self.assertRaisesRegex(ValueError, "Duplicate card"):
+            calc.deal_river(Card('9', 'c'))
+
+    def test_river_duplicates_turn_card(self):
+        """Cannot deal river card that matches the turn card."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+        calc.add_player_hand([Card('Q', 'h'), Card('J', 'h')])
+        calc.deal_flop([Card('T', 'd'), Card('9', 'c'), Card('8', 's')])
+        calc.deal_turn(Card('7', 'h'))
+
+        # Try to deal seven of hearts on river (already on turn)
+        with self.assertRaisesRegex(ValueError, "Duplicate card"):
+            calc.deal_river(Card('7', 'h'))
+
+    def test_river_duplicates_in_six_player_game(self):
+        """River duplicate detection works with 6 players."""
+        calc = LiveOddsCalculator(6)
+        calc.add_player_hand([Card('A', 's'), Card('A', 'h')])
+        calc.add_player_hand([Card('K', 'd'), Card('K', 'c')])
+        calc.add_player_hand([Card('Q', 's'), Card('Q', 'h')])
+        calc.add_player_hand([Card('J', 's'), Card('J', 'h')])
+        calc.add_player_hand([Card('T', 's'), Card('T', 'h')])
+        calc.add_player_hand([Card('9', 's'), Card('9', 'h')])
+        calc.deal_flop([Card('8', 'c'), Card('7', 'c'), Card('6', 's')])
+        calc.deal_turn(Card('5', 'd'))
+
+        # Try to deal queen of hearts (player 3 has it)
+        with self.assertRaisesRegex(ValueError, "Duplicate card"):
+            calc.deal_river(Card('Q', 'h'))
+
+    # ===== SET_BOARD DUPLICATES =====
+
+    def test_set_board_with_internal_duplicates(self):
+        """Cannot set board with duplicate cards within itself."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+        calc.add_player_hand([Card('Q', 'h'), Card('J', 'h')])
+
+        # Board with duplicate
+        with self.assertRaisesRegex(ValueError, "Duplicate card"):
+            calc.set_board([
+                Card('T', 'd'), Card('T', 'd'), Card('8', 's'),
+                Card('7', 'h'), Card('6', 'c')
+            ])
+
+    def test_set_board_duplicates_hole_cards(self):
+        """Cannot set board that duplicates hole cards."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+        calc.add_player_hand([Card('Q', 'h'), Card('J', 'h')])
+
+        # Board includes ace of spades
+        with self.assertRaisesRegex(ValueError, "Duplicate card"):
+            calc.set_board([
+                Card('A', 's'), Card('T', 'd'), Card('9', 'c'),
+                Card('8', 's'), Card('7', 'h')
+            ])
+
+    # ===== RANK COUNT VALIDATION =====
+
+    def test_five_cards_of_same_rank_rejected(self):
+        """Cannot have 5 cards of the same rank."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('A', 's'), Card('A', 'h')])
+        calc.add_player_hand([Card('A', 'd'), Card('A', 'c')])
+
+        # Try to deal fifth ace (impossible in standard deck)
+        with self.assertRaisesRegex(ValueError, "Duplicate card"):
+            calc.deal_flop([Card('A', 's'), Card('Q', 'h'), Card('J', 'd')])
+
+    def test_rank_count_validation_across_all_cards(self):
+        """Rank count validation checks hole cards + board."""
+        calc = LiveOddsCalculator(3)
+        calc.add_player_hand([Card('K', 's'), Card('K', 'h')])
+        calc.add_player_hand([Card('K', 'd'), Card('Q', 'c')])
+        calc.add_player_hand([Card('J', 's'), Card('J', 'h')])
+
+        # Already have 3 kings, try to add 2 more on flop
+        with self.assertRaisesRegex(ValueError, "Duplicate card"):
+            calc.deal_flop([Card('K', 'c'), Card('K', 's'), Card('Q', 'h')])
+
+    # ===== FOLDED PLAYERS DUPLICATES =====
+
+    def test_folded_player_cards_prevent_duplicates(self):
+        """Folded players' cards still prevent duplicates on board."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+        calc.add_player_hand([Card('Q', 'h'), Card('J', 'h')])
+
+        # Fold player 2
+        calc.fold_player(1)
+
+        # Try to deal queen of hearts (folded player has it)
+        with self.assertRaisesRegex(ValueError, "Duplicate card"):
+            calc.deal_flop([Card('Q', 'h'), Card('T', 'd'), Card('9', 'c')])
+
+    def test_folded_player_cards_on_turn(self):
+        """Folded players' cards prevent duplicates on turn."""
+        calc = LiveOddsCalculator(3)
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+        calc.add_player_hand([Card('Q', 'h'), Card('J', 'h')])
+        calc.add_player_hand([Card('T', 'd'), Card('9', 'd')])
+
+        calc.deal_flop([Card('8', 'c'), Card('7', 'c'), Card('6', 's')])
+
+        # Fold player 3
+        calc.fold_player(2)
+
+        # Try to deal ten of diamonds (folded player has it)
+        with self.assertRaisesRegex(ValueError, "Duplicate card"):
+            calc.deal_turn(Card('T', 'd'))
+
+    def test_folded_player_cards_on_river(self):
+        """Folded players' cards prevent duplicates on river."""
+        calc = LiveOddsCalculator(2)
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+        calc.add_player_hand([Card('Q', 'h'), Card('J', 'h')])
+
+        calc.deal_flop([Card('T', 'd'), Card('9', 'c'), Card('8', 's')])
+        calc.deal_turn(Card('7', 'c'))
+
+        # Fold player 1
+        calc.fold_player(0)
+
+        # Try to deal king of spades (folded player has it)
+        with self.assertRaisesRegex(ValueError, "Duplicate card"):
+            calc.deal_river(Card('K', 's'))
+
+
 if __name__ == '__main__':
     unittest.main()
