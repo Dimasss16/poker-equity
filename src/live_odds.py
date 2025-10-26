@@ -174,7 +174,7 @@ class LiveOddsCalculator:
         # Fold the player
         self.folded_players.add(player_idx)
 
-    def calculate_equities(self, num_sims: int = 10_000, seed: int = None) -> Dict[int, float]:
+    def calculate_equities(self, num_sims: int = 10_000, seed: int = None, debug: bool = False, capture_boards: bool = False) -> Dict[int, float]:
         """
         Calculate win probability for each player.
 
@@ -209,6 +209,9 @@ class LiveOddsCalculator:
 
             self.last_split_probability = 0.0  # No split possible with 1 player
 
+            if capture_boards:
+                self._last_captured_boards = []
+
             return equities
 
         if seed is not None:
@@ -224,6 +227,8 @@ class LiveOddsCalculator:
         split_count = 0  # Track total splits
         cards_needed = 5 - len(self.board)
 
+        captured_boards = [] if capture_boards else None
+
         # Pre-compute known cards (includes folded players' cards!)
         known_cards_set = set((c.rank, c.suit) for c in self.get_all_known_cards())
 
@@ -238,6 +243,10 @@ class LiveOddsCalculator:
             # Deal board from available cards
             remaining_board = available_cards[:cards_needed]
             full_board = self.board + remaining_board
+
+            # Capture board if requested (for testing)
+            if capture_boards:
+                captured_boards.append(full_board[:])  # Copy the board
 
             # Evaluate only active players' hands
             strengths = {}
@@ -281,6 +290,9 @@ class LiveOddsCalculator:
 
         # Store split probability
         self.last_split_probability = split_count / num_sims
+
+        if capture_boards:
+            self._last_captured_boards = captured_boards
 
         return equities
 

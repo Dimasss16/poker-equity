@@ -1368,7 +1368,7 @@ class TestFoldedCardsNotInSimulations(unittest.TestCase):
 
         equity_folded = calc2.calculate_equities(num_sims=100_000, seed=42)
 
-        # When opponent folds, we should have 100% (they can't beat us)
+        # When opponent folds, we should have 100%
         self.assertEqual(equity_folded[0], 1.0)
         self.assertEqual(equity_folded[1], 0.0)
 
@@ -1415,7 +1415,7 @@ class TestFoldedCardsNotInSimulations(unittest.TestCase):
                 self.assertFalse(
                     (card.rank == 'K' and card.suit in ['d', 'c']) or
                     (card.rank == 'Q' and card.suit in ['s', 'h']),
-                    f"Folded card {card.rank}{card.suit} appeared on board!"
+                    f"Folded card {card.rank}{card.suit} appeared on board or naur"
                 )
 
     def test_folded_cards_with_partial_board(self):
@@ -1452,12 +1452,120 @@ class TestFoldedCardsNotInSimulations(unittest.TestCase):
             for card in turn_river:
                 self.assertFalse(
                     card.rank == 'T' and card.suit == 'h',
-                    "Folded card Th appeared on turn/river!"
+                    "Folded card Th appeared on turn/river, shoot"
                 )
                 self.assertFalse(
                     card.rank == '9' and card.suit == 'h',
-                    "Folded card 9h appeared on turn/river!"
+                    "Folded card 9h appeared on turn/river oh no"
                 )
+
+    def test_folded_cards_never_in_actual_simulation_boards(self):
+        """THE CRITICAL TEST: Verify folded cards don't appear in real calculate_equities() boards."""
+        calc = LiveOddsCalculator(3)
+
+        # Player 1: Active
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])
+
+        # Player 2: Will fold (has specific cards we'll track)
+        calc.add_player_hand([Card('Q', 'h'), Card('J', 'h')])
+
+        # Player 3: Active
+        calc.add_player_hand([Card('T', 'd'), Card('9', 'd')])
+
+        # Fold player 2 (Qh, Jh should NEVER appear on boards)
+        calc.fold_player(1)
+
+        # Run actual calculate_equities with board capture
+        equities = calc.calculate_equities(num_sims=1_000, seed=42, capture_boards=True)
+
+        # Access captured boards
+        boards = calc._last_captured_boards
+
+        # We should have captured 1000 boards
+        self.assertEqual(len(boards), 1_000)
+
+        # Check EVERY board for folded cards
+        folded_cards = {('Q', 'h'), ('J', 'h')}
+
+        for i, board in enumerate(boards):
+            board_set = set((c.rank, c.suit) for c in board)
+
+            # Verify folded cards never appear
+            intersection = board_set & folded_cards
+            self.assertEqual(
+                len(intersection), 0,
+                f"Simulation {i}: Folded cards {intersection} appeared on board {board} yikes"
+            )
+
+        # Also verify equity is correct (player 2 has 0%)
+        self.assertEqual(equities[1], 0.0)
+        self.assertGreater(equities[0], 0.0)
+        self.assertGreater(equities[2], 0.0)
+
+    def test_folded_cards_never_appear_after_flop(self):
+        """Verify folded cards don't appear on turn/river in real simulations."""
+        calc = LiveOddsCalculator(3)  # Changed to 3 players
+
+        calc.add_player_hand([Card('A', 's'), Card('K', 's')])  # Active
+        calc.add_player_hand([Card('7', 'c'), Card('2', 'c')])  # Will fold
+        calc.add_player_hand([Card('Q', 'h'), Card('J', 'h')])  # Active
+
+        # Deal flop
+        calc.deal_flop([Card('T', 'h'), Card('9', 'd'), Card('8', 's')])
+
+        # Fold player 2
+        calc.fold_player(1)
+
+        # Now 2 active players remain, so simulation WILL run
+        equities = calc.calculate_equities(num_sims=500, seed=42, capture_boards=True)
+
+        boards = calc._last_captured_boards
+        self.assertEqual(len(boards), 500)  # Now we get 500 boards
+
+        # Each board should be 5 cards (3 from flop + 2 simulated)
+        folded_cards = {('7', 'c'), ('2', 'c')}
+
+        for board in boards:
+            self.assertEqual(len(board), 5)
+
+            # Check last 2 cards (turn and river) for folded cards
+            turn_river = board[3:]
+            for card in turn_river:
+                self.assertNotIn(
+                    (card.rank, card.suit),
+                    folded_cards,
+                    f"Folded card {card.rank}{card.suit} appeared on simulated turn/river, we need to fix this now"
+                )
+
+    def test_multiple_folded_players_all_cards_excluded_from_real_sim(self):
+        """Multiple folded players - none of their cards appear in real simulation."""
+        calc = LiveOddsCalculator(4)
+
+        calc.add_player_hand([Card('A', 's'), Card('A', 'h')])  # Active
+        calc.add_player_hand([Card('K', 'd'), Card('K', 'c')])  # Fold
+        calc.add_player_hand([Card('Q', 's'), Card('Q', 'h')])  # Fold
+        calc.add_player_hand([Card('J', 's'), Card('J', 'h')])  # Active
+
+        # Fold players 2 and 3
+        calc.fold_player(1)
+        calc.fold_player(2)
+
+        # Run simulation
+        equities = calc.calculate_equities(num_sims=1_000, seed=42, capture_boards=True)
+
+        boards = calc._last_captured_boards
+
+        # All 4 folded cards should never appear
+        folded_cards = {('K', 'd'), ('K', 'c'), ('Q', 's'), ('Q', 'h')}
+
+        for i, board in enumerate(boards):
+            board_set = set((c.rank, c.suit) for c in board)
+            intersection = board_set & folded_cards
+
+            self.assertEqual(
+                len(intersection), 0,
+                f"Simulation {i}: Folded cards {intersection} appeared on board:("
+            )
 
 
 if __name__ == '__main__':
