@@ -96,4 +96,5 @@ if __name__ == '__main__':
 '''
 TODO:
 - Display hand names after river card
+- Equity table overlaps with players' hands for 5 and 6 players
 '''

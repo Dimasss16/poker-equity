@@ -88,6 +88,19 @@ document.addEventListener('DOMContentLoaded', () => {
     playerSelect.addEventListener('change', (e) => {
         numPlayers = parseInt(e.target.value);
         renderPlayers(numPlayers);
+
+        document.querySelectorAll('.board-input').forEach(inp => {
+            inp.value = '';
+            inp.classList.remove('valid-card', 'hidden-input');
+            inp.removeAttribute('data-suit');
+            inp.style.borderColor = '';
+            inp.style.background = '';
+        });
+        document.querySelectorAll('.board-area .visual-card').forEach(el => el.remove());
+        document.querySelectorAll('.board-area .card-remove-btn').forEach(el => el.remove());
+
+        resetStats();
+        // we reset everything when the player count switches
     });
 
     resetBtn.addEventListener('click', () => {
