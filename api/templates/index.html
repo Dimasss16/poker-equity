@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monte Carlo Poker Engine</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;800&display=swap"
+          rel="stylesheet">
+</head>
+<body>
+
+<div class="app-container">
+    <header>
+        <div class="logo">
+            <span class="suit">♠</span> MC EQUITY <span class="version">v1.0</span>
+        </div>
+        <nav>
+            <button class="nav-btn active" onclick="switchTab('live-odds')">Live Odds</button>
+            <button class="nav-btn" onclick="switchTab('preflop')">Pre-flop Analysis</button>
+        </nav>
+    </header>
+
+    <main id="live-odds" class="tab-content active">
+        <div class="controls-bar">
+            <div class="control-group">
+                <label>Players</label>
+                <select id="num-players-select">
+                    <option value="2" selected>2 Players</option>
+                    <option value="3">3 Players</option>
+                    <option value="4">4 Players</option>
+                    <option value="5">5 Players</option>
+                    <option value="6">6 Players</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <button id="reset-btn" class="btn secondary">Reset Hand</button>
+            </div>
+        </div>
+
+        <div class="poker-table">
+            <div class="board-area">
+                <div class="street-label">BOARD</div>
+                <div class="board-slots">
+                    <input type="text" class="card-input board-input" id="board-1" placeholder="Flop" maxlength="2">
+                    <input type="text" class="card-input board-input" id="board-2" placeholder="Flop" maxlength="2">
+                    <input type="text" class="card-input board-input" id="board-3" placeholder="Flop" maxlength="2">
+                    <div class="spacer"></div>
+                    <input type="text" class="card-input board-input" id="board-4" placeholder="Turn" maxlength="2">
+                    <div class="spacer"></div>
+                    <input type="text" class="card-input board-input" id="board-5" placeholder="River" maxlength="2">
+                </div>
+                <div class="street-info" id="current-street-display">Street: Preflop</div>
+            </div>
+
+            <div class="players-grid" id="players-container">
+                <!-- Player cards injected by JS -->
+            </div>
+
+            <div class="equity-table" id="equity-table">
+                <h4>Equity Rankings</h4>
+                <table>
+                    <tbody id="equity-table-body"></tbody>
+                </table>
+            </div>
+
+            <div class="pot-stats" id="pot-stats" style="display:none">
+                Split Pot Probability: <span id="split-prob">0%</span>
+            </div>
+        </div>
+    </main>
+
+    <main id="preflop" class="tab-content">
+        <div class="analysis-container">
+            <div class="sidebar">
+                <h3>Configuration</h3>
+                <div class="config-item">
+                    <label>Scenario</label>
+                    <select disabled>
+                        <option>6-Max (Standard)</option>
+                        <option>Heads Up</option>
+                    </select>
+                </div>
+                <div class="stats-box">
+                    <h4>Top 3 Hands</h4>
+                    <ul id="top-hands-list">
+                        <li>Loading...</li>
+                    </ul>
+                </div>
+                <div class="stats-box">
+                    <h4>Bottom 3 Hands</h4>
+                    <ul id="bottom-hands-list">
+                        <li>Loading...</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="main-chart">
+                <h2 style="margin-bottom: 2rem;">Equity Heatmap (169 Hands)</h2>
+                <div class="heatmap-placeholder"
+                     style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem;">
+                    <img src="{{ url_for('static', filename='images/joker.GIF') }}"
+                         alt="Magic Joker"
+                         style="height: 300px; border-radius: 8px;">
+                    <div style="text-align: center;">
+                        <h3 style="color: var(--accent); margin-bottom: 0.5rem;">Chart's Folded</h3>
+                        <p style="color: var(--text-muted); font-size: 0.9rem;">
+                            This feature is taking a coffee break!<br>
+                            Coming soon in a future update.
+                        </p>
+                    </div>
+                    <div style="background: var(--bg-panel); padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.8rem; color: var(--text-muted);">
+                        Error 404: Heatmap not found
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<div id="error-toast" class="toast">Error message here</div>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

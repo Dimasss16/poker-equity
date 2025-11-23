@@ -1,0 +1,493 @@
+:root {
+    --bg-dark: #121214;
+    --bg-panel: #1e1e24;
+    --table-green: #2c5e4f;
+    --table-green-dark: #1b3a31;
+    --accent: #4cc9f0;
+    --danger: #f72585;
+    --success: #4cc96c;
+    --gold: #ffd700;
+    --text-main: #e0e0e0;
+    --text-muted: #888899;
+    --card-bg: #f5f5f5;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: 'Inter', sans-serif;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+}
+
+.app-container {
+    width: 100%;
+    max-width: 1200px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background: var(--bg-panel);
+    border-bottom: 1px solid #333;
+}
+
+.logo {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: var(--accent);
+}
+
+.version {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
+.suit {
+    color: var(--text-main);
+}
+
+.nav-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.nav-btn.active {
+    color: var(--text-main);
+    border-bottom-color: var(--accent);
+}
+
+.tab-content {
+    display: none;
+    padding: 2rem;
+    flex: 1;
+}
+
+.tab-content.active {
+    display: flex;
+    flex-direction: column;
+}
+
+.controls-bar {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    align-items: center;
+}
+
+.control-group {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+select {
+    background: var(--bg-dark);
+    color: var(--text-main);
+    border: 1px solid #444;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-family: inherit;
+}
+
+.btn {
+    padding: 0.6rem 1.2rem;
+    border-radius: 4px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.btn:hover {
+    opacity: 0.9;
+}
+
+.primary {
+    background: var(--accent);
+    color: var(--bg-dark);
+}
+
+.secondary {
+    background: #333;
+    color: var(--text-main);
+}
+
+.poker-table {
+    flex: 1;
+    background: radial-gradient(circle, var(--table-green) 0%, var(--table-green-dark) 80%);
+    border-radius: 24px;
+    border: 8px solid #3a3a45;
+    position: relative;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.5);
+    min-height: 600px;
+}
+
+.board-area {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.3);
+    padding: 1.5rem;
+    border-radius: 50px;
+    text-align: center;
+    z-index: 10;
+}
+
+.board-area > .street-label {
+    margin-bottom: 1rem;
+}
+
+.board-slots {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.spacer {
+    width: 1rem;
+}
+
+.street-info {
+    margin-top: 1.5rem;
+    font-size: 0.8rem;
+    color: #8fbcbb;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.card-input {
+    width: 60px;
+    height: 84px;
+    border-radius: 6px;
+    border: 2px solid #555;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.2rem;
+    text-align: center;
+    text-transform: uppercase;
+    transition: all 0.2s;
+}
+
+.card-input:focus {
+    background: white;
+    color: black;
+    border-color: var(--accent);
+    outline: none;
+}
+
+.card-input.valid-card {
+    background: var(--card-bg);
+    border-color: white;
+    font-weight: bold;
+}
+
+.card-input[data-suit="h"], .card-input[data-suit="d"] {
+    color: #d00000;
+}
+
+.card-input[data-suit="c"], .card-input[data-suit="s"] {
+    color: #111;
+}
+
+.players-grid {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+}
+
+.player-seat {
+    position: absolute;
+    pointer-events: auto;
+    width: 150px;
+    background: rgba(30, 30, 36, 0.9);
+    border-radius: 8px;
+    padding: 0.5rem;
+    border: 1px solid #444;
+    transition: all 0.3s;
+    display: flex;
+    flex-direction: column;
+}
+
+.pos-bottom {
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.pos-bottom-left {
+    bottom: 18%;
+    left: 8%;
+}
+
+.pos-top-left {
+    top: 18%;
+    left: 8%;
+}
+
+.pos-top {
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.pos-top-right {
+    top: 18%;
+    right: 8%;
+}
+
+.pos-bottom-right {
+    bottom: 18%;
+    right: 8%;
+}
+
+.pos-left {
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.pos-right {
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.player-seat.winner {
+    border-color: var(--gold);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+}
+
+.player-seat.folded {
+    opacity: 0.5;
+    filter: grayscale(0.8);
+}
+
+.seat-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.player-name {
+    font-weight: bold;
+}
+
+.fold-btn {
+    font-size: 0.7rem;
+    background: transparent;
+    border: 1px solid #555;
+    color: #aaa;
+    padding: 2px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.fold-btn:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.fold-btn.active {
+    background: var(--danger);
+    color: white;
+    border-color: var(--danger);
+}
+
+.fold-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.hole-cards {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.stats-row {
+    margin-top: 0.5rem;
+}
+
+.stat-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    margin-bottom: 2px;
+}
+
+.progress-bg {
+    height: 6px;
+    background: #333;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    width: 0%;
+    transition: width 0.5s ease-out;
+}
+
+.equity-fill {
+    background: linear-gradient(90deg, #4cc9f0, #4361ee);
+}
+
+.win-fill {
+    background: linear-gradient(90deg, #4cc96c, #2a9d8f);
+}
+
+.pot-stats {
+    position: absolute;
+    bottom: 0;
+    margin-bottom: 1rem;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--danger);
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    display: none;
+    z-index: 100;
+}
+
+.analysis-container {
+    display: flex;
+    gap: 2rem;
+    height: 100%;
+}
+
+.sidebar {
+    width: 250px;
+    background: var(--bg-panel);
+    padding: 1.5rem;
+    border-radius: 8px;
+}
+
+.main-chart {
+    flex: 1;
+    background: #000;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #333;
+}
+
+.heatmap-placeholder {
+    color: #555;
+    text-align: center;
+}
+
+.stats-box {
+    margin-top: 2rem;
+}
+
+.stats-box ul {
+    list-style: none;
+    margin-top: 0.5rem;
+}
+
+.stats-box li {
+    font-size: 0.9rem;
+    margin-bottom: 0.3rem;
+    color: var(--text-muted);
+    border-bottom: 1px solid #333;
+    padding-bottom: 4px;
+}
+
+.equity-table {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(30, 30, 36, 0.95);
+    border-radius: 8px;
+    padding: 0.8rem;
+    border: 1px solid #444;
+    display: none;
+    z-index: 20;
+}
+
+.equity-table h4 {
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--accent);
+}
+
+.equity-table table {
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.equity-table td {
+    padding: 0.25rem 0.5rem;
+}
+
+.equity-table tr.leader td {
+    color: var(--gold);
+    font-weight: bold;
+}
+
+@media (max-width: 800px) {
+    .players-grid {
+        grid-template-columns: repeat(2, 1fr);
+        max-width: 100%;
+    }
+
+    .card-input {
+        width: 45px;
+        height: 60px;
+        font-size: 1rem;
+    }
+
+    .analysis-container {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+    }
+}
