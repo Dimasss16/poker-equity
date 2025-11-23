@@ -13,7 +13,7 @@
 <div class="app-container">
     <header>
         <div class="logo">
-            <span class="suit">♠</span> MC EQUITY <span class="version">v1.0</span>
+            <span class="suit">♠</span> MC EQUITY <span class="version">v1.1</span>
         </div>
         <nav>
             <button class="nav-btn active" onclick="switchTab('live-odds')">Live Odds</button>
@@ -42,13 +42,23 @@
             <div class="board-area">
                 <div class="street-label">BOARD</div>
                 <div class="board-slots">
-                    <input type="text" class="card-input board-input" id="board-1" placeholder="Flop" maxlength="2">
-                    <input type="text" class="card-input board-input" id="board-2" placeholder="Flop" maxlength="2">
-                    <input type="text" class="card-input board-input" id="board-3" placeholder="Flop" maxlength="2">
+                    <div class="card-wrapper">
+                        <input type="text" class="card-input board-input" id="board-1" placeholder="Flop" maxlength="2">
+                    </div>
+                    <div class="card-wrapper">
+                        <input type="text" class="card-input board-input" id="board-2" placeholder="Flop" maxlength="2">
+                    </div>
+                    <div class="card-wrapper">
+                        <input type="text" class="card-input board-input" id="board-3" placeholder="Flop" maxlength="2">
+                    </div>
                     <div class="spacer"></div>
-                    <input type="text" class="card-input board-input" id="board-4" placeholder="Turn" maxlength="2">
+                    <div class="card-wrapper">
+                        <input type="text" class="card-input board-input" id="board-4" placeholder="Turn" maxlength="2">
+                    </div>
                     <div class="spacer"></div>
-                    <input type="text" class="card-input board-input" id="board-5" placeholder="River" maxlength="2">
+                    <div class="card-wrapper">
+                        <input type="text" class="card-input board-input" id="board-5" placeholder="River" maxlength="2">
+                    </div>
                 </div>
                 <div class="street-info" id="current-street-display">Street: Preflop</div>
             </div>
@@ -102,7 +112,7 @@
                          alt="Magic Joker"
                          style="height: 300px; border-radius: 8px;">
                     <div style="text-align: center;">
-                        <h3 style="color: var(--accent); margin-bottom: 0.5rem;">Chart's Folded</h3>
+                        <h3 style="color: #4cc9f0; margin-bottom: 0.5rem;">Chart's Folded</h3>
                         <p style="color: var(--text-muted); font-size: 0.9rem;">
                             This feature is taking a coffee break!<br>
                             Coming soon in a future update.
