@@ -96,5 +96,4 @@ if __name__ == '__main__':
 '''
 TODO:
 - Display hand names after river card
-- Don't allow folding the final player
 '''

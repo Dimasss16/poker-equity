@@ -249,6 +249,15 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Count active (non-folded) players
+        const activePlayers = document.querySelectorAll('.player-seat:not(.folded)').length;
+
+        // Don't allow folding the last player
+        if (activePlayers <= 1) {
+            showError("Cannot fold: only 1 player remaining");
+            return;
+        }
+
         // Fold the player
         seat.classList.add('folded');
         btn.classList.add('active');
