@@ -95,8 +95,6 @@ if __name__ == '__main__':
 
 '''
 TODO:
-- Show suit icons once cards are entered
-- Recalculate automatically when cards are edited
 - Display hand names after river card
 - Don't allow folding the final player
 '''
