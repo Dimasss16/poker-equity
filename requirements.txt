@@ -4,3 +4,5 @@ matplotlib
 pandas
 tqdm
 seaborn
+flask
+gunicorn
