@@ -17,17 +17,21 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
           pip install ruff pytest
+      
       - name: Lint with Ruff
         run: ruff check src/ api/
         continue-on-error: true
+      
       - name: Run tests
         run: pytest tests/ -v
 
