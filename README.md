@@ -13,7 +13,7 @@ Supports the following:
 ### Web App
 
 ```bash
-python app.py
+python -m api.app
 ```
 
 Opens at `http://localhost:5003`. Enter hole cards for each player; equity calculates automatically as you add board cards.
@@ -21,7 +21,7 @@ Opens at `http://localhost:5003`. Enter hole cards for each player; equity calcu
 ### live odds
 
 ```bash
-python scripts/live_odds_cli.py
+python -m scripts.live_odds_cli.py
 ```
 
 
