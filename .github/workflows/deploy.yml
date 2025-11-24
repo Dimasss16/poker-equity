@@ -30,3 +30,33 @@ jobs:
 
       - name: Run tests
         run: pytest tests/ -v
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+      - name: Start deployment
+        uses: bobheadxi/deployments@v1
+        id: deployment
+        with:
+          step: start
+          token: ${{ secrets.GITHUB_TOKEN }}
+          env: production
+  
+      - name: Trigger Render
+        run: curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK }}
+  
+      - name: Wait for Render
+        run: sleep 90
+  
+      - name: Finish deployment
+        uses: bobheadxi/deployments@v1
+        if: always()
+        with:
+          step: finish
+          token: ${{ secrets.GITHUB_TOKEN }}
+          status: ${{ job.status }}
+          env: ${{ steps.deployment.outputs.env }}
+          deployment_id: ${{ steps.deployment.outputs.deployment_id }}
+          env_url: https://poker-equity.onrender.com
