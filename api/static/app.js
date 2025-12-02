@@ -85,6 +85,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     renderPlayers(numPlayers);
 
+    setTimeout(() => updateBoardCardStates(), 0);
+
     playerSelect.addEventListener('change', (e) => {
         numPlayers = parseInt(e.target.value);
         renderPlayers(numPlayers);
@@ -95,9 +97,13 @@ document.addEventListener('DOMContentLoaded', () => {
             inp.removeAttribute('data-suit');
             inp.style.borderColor = '';
             inp.style.background = '';
+            inp.disabled = false;
+            inp.classList.remove('disabled-input');
         });
         document.querySelectorAll('.board-area .visual-card').forEach(el => el.remove());
         document.querySelectorAll('.board-area .card-remove-btn').forEach(el => el.remove());
+
+        setTimeout(() => updateBoardCardStates(), 0);
 
         resetStats();
         // we reset everything when the player count switches
@@ -108,6 +114,8 @@ document.addEventListener('DOMContentLoaded', () => {
             inp.value = '';
             inp.classList.remove('valid-card', 'hidden-input');
             inp.removeAttribute('data-suit');
+            inp.disabled = false;
+            inp.classList.remove('disabled-input');
         });
         document.querySelectorAll('.visual-card').forEach(el => el.remove());
         document.querySelectorAll('.card-remove-btn').forEach(el => el.remove());
@@ -116,6 +124,10 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.disabled = false;
             btn.closest('.player-seat').classList.remove('folded');
         });
+
+        // Reset board card states
+        setTimeout(() => updateBoardCardStates(), 0);
+
         resetStats();
     });
 
@@ -190,11 +202,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                // Clear any error styling
                 e.target.style.borderColor = '';
                 e.target.style.background = '';
 
-                // Auto-focus next input (only if valid)
+                updateBoardCardStates();
+
+                // Auto-focus next input (only if valid and not disabled)
                 const currentId = e.target.id;
                 let nextInput = null;
 
@@ -225,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                if (nextInput) {
+                if (nextInput && !nextInput.disabled) {
                     nextInput.focus();
                 }
 
@@ -330,12 +343,55 @@ document.addEventListener('DOMContentLoaded', () => {
 
         console.log(`All player cards filled: ${allPlayerCardsFilled}`);
 
-        // Only calculate if all player cards are valid
+        updateBoardCardStates();
+
         if (allPlayerCardsFilled) {
             console.log('Triggering calculateEquity()');
             calculateEquity();
         } else {
             console.log('Skipping calculation - not all cards valid');
+        }
+    }
+
+    function updateBoardCardStates() {
+        // Check flop completion (all 3 cards valid)
+        const flop1 = document.getElementById('board-1');
+        const flop2 = document.getElementById('board-2');
+        const flop3 = document.getElementById('board-3');
+        const turn = document.getElementById('board-4');
+        const river = document.getElementById('board-5');
+
+        const flopComplete =
+            flop1.classList.contains('valid-card') &&
+            flop2.classList.contains('valid-card') &&
+            flop3.classList.contains('valid-card');
+
+        const turnValid = turn.classList.contains('valid-card');
+
+        // Disable turn until flop is complete
+        if (!flopComplete) {
+            turn.disabled = true;
+            turn.classList.add('disabled-input');
+            if (turn.value) {
+                clearCard('board-4');
+            }
+        } else {
+            turn.disabled = false;
+            turn.classList.remove('disabled-input');
+            turn.placeholder = 'Turn';
+        }
+
+        // Disable river until turn is valid
+        if (!flopComplete || !turnValid) {
+            river.disabled = true;
+            river.classList.add('disabled-input');
+            if (river.value) {
+                clearCard('board-5');
+            }
+        } else {
+            river.disabled = false;
+            river.classList.remove('disabled-input');
+            river.placeholder = 'River';
         }
     }
 
