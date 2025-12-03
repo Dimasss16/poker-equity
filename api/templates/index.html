@@ -13,7 +13,7 @@
 <div class="app-container">
     <header>
         <div class="logo">
-            <span class="suit">♠</span> MC EQUITY <span class="version">v1.1</span>
+            <span class="suit">♠</span> MC EQUITY <span class="version">v2.0</span>
         </div>
         <nav>
             <button class="nav-btn active" onclick="switchTab('live-odds')">Live Odds</button>
@@ -38,44 +38,71 @@
             </div>
         </div>
 
-        <div class="poker-table">
-            <div class="board-area">
-                <div class="street-label">BOARD</div>
-                <div class="board-slots">
-                    <div class="card-wrapper">
-                        <input type="text" class="card-input board-input" id="board-1" placeholder="Flop" maxlength="2">
-                    </div>
-                    <div class="card-wrapper">
-                        <input type="text" class="card-input board-input" id="board-2" placeholder="Flop" maxlength="2">
-                    </div>
-                    <div class="card-wrapper">
-                        <input type="text" class="card-input board-input" id="board-3" placeholder="Flop" maxlength="2">
-                    </div>
-                    <div class="spacer"></div>
-                    <div class="card-wrapper">
-                        <input type="text" class="card-input board-input" id="board-4" placeholder="Turn" maxlength="2">
-                    </div>
-                    <div class="spacer"></div>
-                    <div class="card-wrapper">
-                        <input type="text" class="card-input board-input" id="board-5" placeholder="River" maxlength="2">
+        <div class="live-odds-layout">
+            <!-- Left: Poker Table + Stats Column -->
+            <div class="left-column">
+                <div class="table-container">
+                    <div class="poker-table">
+                        <div class="board-area">
+                            <div class="street-label">BOARD</div>
+                            <div class="board-slots">
+                                <div class="card-wrapper">
+                                    <input type="text" class="card-input board-input" id="board-1" placeholder="Flop" maxlength="2">
+                                </div>
+                                <div class="card-wrapper">
+                                    <input type="text" class="card-input board-input" id="board-2" placeholder="Flop" maxlength="2">
+                                </div>
+                                <div class="card-wrapper">
+                                    <input type="text" class="card-input board-input" id="board-3" placeholder="Flop" maxlength="2">
+                                </div>
+                                <div class="spacer"></div>
+                                <div class="card-wrapper">
+                                    <input type="text" class="card-input board-input" id="board-4" placeholder="Turn" maxlength="2">
+                                </div>
+                                <div class="spacer"></div>
+                                <div class="card-wrapper">
+                                    <input type="text" class="card-input board-input" id="board-5" placeholder="River" maxlength="2">
+                                </div>
+                            </div>
+                            <div class="street-info" id="current-street-display">Street: Preflop</div>
+                        </div>
+
+                        <div class="players-grid" id="players-container">
+                            <!-- Player cards injected by JS -->
+                        </div>
                     </div>
                 </div>
-                <div class="street-info" id="current-street-display">Street: Preflop</div>
+
+                <!-- Stats Row Below Table -->
+                <div class="stats-row">
+                    <div class="equity-table" id="equity-table">
+                        <h4>Equity Rankings</h4>
+                        <table>
+                            <tbody id="equity-table-body"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="pot-stats" id="pot-stats" style="display:none">
+                        Split Pot Probability: <span id="split-prob">0%</span>
+                    </div>
+                </div>
             </div>
 
-            <div class="players-grid" id="players-container">
-                <!-- Player cards injected by JS -->
-            </div>
-
-            <div class="equity-table" id="equity-table">
-                <h4>Equity Rankings</h4>
-                <table>
-                    <tbody id="equity-table-body"></tbody>
-                </table>
-            </div>
-
-            <div class="pot-stats" id="pot-stats" style="display:none">
-                Split Pot Probability: <span id="split-prob">0%</span>
+            <!-- Right: Card Selection Panel -->
+            <div class="card-picker-panel">
+                <div class="picker-header">SELECT CARD</div>
+                <div class="suit-headers">
+                    <span class="suit-header card-black">♠</span>
+                    <span class="suit-header card-red">♥</span>
+                    <span class="suit-header card-red">♦</span>
+                    <span class="suit-header card-black">♣</span>
+                </div>
+                <div class="deck-grid" id="deck-grid">
+                    <!-- Card buttons generated by JS -->
+                </div>
+                <div class="picker-hint">
+                    Click a card slot, then select from deck
+                </div>
             </div>
         </div>
     </main>

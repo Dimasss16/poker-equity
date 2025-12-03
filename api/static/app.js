@@ -6,11 +6,157 @@ document.addEventListener('DOMContentLoaded', () => {
     const toast = document.getElementById('error-toast');
 
     const suitSymbols = {
-        's': '♠',
-        'h': '♥',
-        'd': '♦',
-        'c': '♣'
+        's': '♠', 'h': '♥', 'd': '♦', 'c': '♣'
     };
+
+
+    // Card Picker State
+    const usedCards = new Set(); // Tracks which cards are already used (e.g., "AS", "KH")
+    let activeCardInput = null; // Tracks which input slot is waiting for card selection
+
+    const ranks = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
+    const suits = ['s', 'h', 'd', 'c'];
+
+    // Initialize card picker grid
+    function initCardPicker() {
+        const deckGrid = document.getElementById('deck-grid');
+        if (!deckGrid) return;
+
+        deckGrid.innerHTML = '';
+
+        ranks.forEach(rank => {
+            suits.forEach(suit => {
+                const cardId = `${rank}${suit.toUpperCase()}`;
+                const suitSymbol = suitSymbols[suit];
+                const colorClass = (suit === 'h' || suit === 'd') ? 'card-red' : 'card-black';
+
+                const button = document.createElement('button');
+                button.className = 'deck-card';
+                button.dataset.card = cardId;
+                button.innerHTML = `
+                    <span class="deck-card-rank ${colorClass}">${rank}</span>
+                    <span class="deck-card-suit ${colorClass}">${suitSymbol}</span>
+                `;
+                button.onclick = () => selectCardFromPicker(cardId);
+
+                deckGrid.appendChild(button);
+            });
+        });
+    }
+
+    // Select card from picker and fill active input
+    function selectCardFromPicker(cardId) {
+        // If no active input, auto-select first empty slot
+        if (!activeCardInput) {
+            activeCardInput = findFirstEmptySlot();
+            if (!activeCardInput) {
+                showError("All card slots are filled");
+                return;
+            }
+            setActiveInput(activeCardInput);
+        }
+
+        const input = document.getElementById(activeCardInput);
+        if (!input) return;
+
+        // Check if card is already used
+        if (usedCards.has(cardId)) {
+            showError(`${cardId} is already in use`);
+            return;
+        }
+
+        input.value = cardId;
+        input.classList.add('valid-card');
+        input.setAttribute('data-suit', cardId[1].toLowerCase());
+
+        renderVisualCard(input);
+
+        usedCards.add(cardId);
+        updateCardGrid();
+
+        updateBoardCardStates();
+
+        const nextInput = getNextEmptySlot(activeCardInput);
+        if (nextInput) {
+            setActiveInput(nextInput);
+        } else {
+            setActiveInput(null);
+        }
+
+        setTimeout(checkAndCalculate, 100);
+    }
+
+    function updateCardGrid() {
+        document.querySelectorAll('.deck-card').forEach(cardBtn => {
+            const cardId = cardBtn.dataset.card;
+            if (usedCards.has(cardId)) {
+                cardBtn.classList.add('card-used');
+            } else {
+                cardBtn.classList.remove('card-used');
+            }
+        });
+    }
+
+    function setActiveInput(inputId) {
+        document.querySelectorAll('.card-input').forEach(inp => {
+            inp.classList.remove('active-target');
+        });
+
+        activeCardInput = inputId;
+
+        if (inputId) {
+            const input = document.getElementById(inputId);
+            if (input && !input.disabled) {
+                input.classList.add('active-target');
+                input.focus();
+            }
+        }
+    }
+
+    function findFirstEmptySlot() {
+        for (let i = 0; i < numPlayers; i++) {
+            const c1 = document.getElementById(`p${i}-c1`);
+            const c2 = document.getElementById(`p${i}-c2`);
+            if (c1 && !c1.classList.contains('valid-card')) return c1.id;
+            if (c2 && !c2.classList.contains('valid-card')) return c2.id;
+        }
+
+        for (let i = 1; i <= 5; i++) {
+            const boardCard = document.getElementById(`board-${i}`);
+            if (boardCard && !boardCard.classList.contains('valid-card') && !boardCard.disabled) {
+                return boardCard.id;
+            }
+        }
+
+        return null;
+    }
+
+    function getNextEmptySlot(currentId) {
+        const allSlots = [];
+
+        for (let i = 0; i < numPlayers; i++) {
+            allSlots.push(`p${i}-c1`);
+            allSlots.push(`p${i}-c2`);
+        }
+        for (let i = 1; i <= 5; i++) {
+            allSlots.push(`board-${i}`);
+        }
+
+        const currentIndex = allSlots.indexOf(currentId);
+        if (currentIndex === -1) return findFirstEmptySlot();
+
+        for (let i = currentIndex + 1; i < allSlots.length; i++) {
+            const slotId = allSlots[i];
+            const input = document.getElementById(slotId);
+            if (input && !input.classList.contains('valid-card') && !input.disabled) {
+                return slotId;
+            }
+        }
+
+        return null;
+    }
+
+    initCardPicker();
 
     function renderVisualCard(input) {
         const wrapper = input.closest('.card-wrapper');
@@ -59,6 +205,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const input = document.getElementById(inputId);
         if (!input) return;
 
+        const cardValue = input.value.toUpperCase();
+        if (cardValue && usedCards.has(cardValue)) {
+            usedCards.delete(cardValue);
+            updateCardGrid();
+        }
+
         input.value = '';
         input.classList.remove('valid-card', 'hidden-input');
         input.removeAttribute('data-suit');
@@ -71,7 +223,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (removeBtn) removeBtn.remove();
         }
 
-        input.focus();
+        setActiveInput(inputId);
+
         setTimeout(checkAndCalculate, 100);
     }
 
@@ -124,6 +277,10 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.disabled = false;
             btn.closest('.player-seat').classList.remove('folded');
         });
+
+        // Clear card picker
+        usedCards.clear();
+        updateCardGrid();
 
         // Reset board card states
         setTimeout(() => updateBoardCardStates(), 0);
@@ -195,9 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     e.target.style.background = 'rgba(166, 61, 79, 0.2)';
 
                     // Custom message for board vs player duplicates
-                    const errorMsg = duplicateLocation === 'Board'
-                        ? `${currentCard} is already on the board`
-                        : `Duplicate card: ${currentCard} already used by ${duplicateLocation}`;
+                    const errorMsg = duplicateLocation === 'Board' ? `${currentCard} is already on the board` : `Duplicate card: ${currentCard} already used by ${duplicateLocation}`;
                     showError(errorMsg);
                     return;
                 }
@@ -258,8 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById(tabId).classList.add('active');
         const btns = document.querySelectorAll('.nav-btn');
-        if (tabId === 'live-odds') btns[0].classList.add('active');
-        else btns[1].classList.add('active');
+        if (tabId === 'live-odds') btns[0].classList.add('active'); else btns[1].classList.add('active');
     }
 
     window.switchTab = switchTab;
@@ -322,6 +476,51 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+
+    function isBoardStateValid() {
+        const flop1 = document.getElementById('board-1');
+        const flop2 = document.getElementById('board-2');
+        const flop3 = document.getElementById('board-3');
+        const turn = document.getElementById('board-4');
+        const river = document.getElementById('board-5');
+
+        const flop1Valid = flop1.classList.contains('valid-card');
+        const flop2Valid = flop2.classList.contains('valid-card');
+        const flop3Valid = flop3.classList.contains('valid-card');
+        const turnValid = turn.classList.contains('valid-card');
+        const riverValid = river.classList.contains('valid-card');
+
+        // Count filled cards
+        let count = 0;
+        if (flop1Valid) count++;
+        if (flop2Valid) count++;
+        if (flop3Valid) count++;
+        if (turnValid) count++;
+        if (riverValid) count++;
+
+        // Valid: 0 cards (preflop)
+        if (count === 0) return true;
+
+        // Valid: exactly 3 cards (must be complete flop)
+        if (count === 3) {
+            return flop1Valid && flop2Valid && flop3Valid;
+        }
+
+        // Valid: exactly 4 cards (must be flop + turn)
+        if (count === 4) {
+            return flop1Valid && flop2Valid && flop3Valid && turnValid;
+        }
+
+        // Valid: exactly 5 cards (must be all streets)
+        if (count === 5) {
+            return flop1Valid && flop2Valid && flop3Valid && turnValid && riverValid;
+        }
+
+        // Invalid: 1, 2, or any incomplete sequence
+        return false;
+    }
+
+
     function checkAndCalculate() {
         console.log('=== checkAndCalculate called ===');
 
@@ -333,23 +532,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const c1Valid = c1.classList.contains('valid-card');
             const c2Valid = c2.classList.contains('valid-card');
 
-            console.log(`Player ${i + 1}: C1="${c1.value}" (valid: ${c1Valid}), C2="${c2.value}" (valid: ${c2Valid})`);
-
             if (!c1Valid || !c2Valid) {
                 allPlayerCardsFilled = false;
                 break;
             }
         }
 
-        console.log(`All player cards filled: ${allPlayerCardsFilled}`);
-
         updateBoardCardStates();
 
-        if (allPlayerCardsFilled) {
-            console.log('Triggering calculateEquity()');
+        // Only calculate if players complete AND board valid
+        const boardValid = isBoardStateValid();
+
+        if (allPlayerCardsFilled && boardValid) {
+            console.log('Valid state - calculating equity');
             calculateEquity();
         } else {
-            console.log('Skipping calculation - not all cards valid');
+            console.log('Invalid state - skipping calculation');
         }
     }
 
@@ -361,10 +559,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const turn = document.getElementById('board-4');
         const river = document.getElementById('board-5');
 
-        const flopComplete =
-            flop1.classList.contains('valid-card') &&
-            flop2.classList.contains('valid-card') &&
-            flop3.classList.contains('valid-card');
+        const flopComplete = flop1.classList.contains('valid-card') && flop2.classList.contains('valid-card') && flop3.classList.contains('valid-card');
 
         const turnValid = turn.classList.contains('valid-card');
 
@@ -432,17 +627,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         const payload = {
-            num_players: numPlayers,
-            hands: hands,
-            board: boardInputs,
-            folded: folded
+            num_players: numPlayers, hands: hands, board: boardInputs, folded: folded
         };
 
         try {
             const res = await fetch('/calculate', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
+                method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
             });
 
             console.log('Response status:', res.status);
@@ -464,15 +654,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateUI(data) {
         // Update Street
-        document.getElementById('current-street-display').innerText =
-            `Street: ${data.street.charAt(0).toUpperCase() + data.street.slice(1)}`;
+        document.getElementById('current-street-display').innerText = `Street: ${data.street.charAt(0).toUpperCase() + data.street.slice(1)}`;
 
         // Update Stats
         const splitProb = (data.split_prob * 100).toFixed(1);
         const potStats = document.getElementById('pot-stats');
         document.getElementById('split-prob').innerText = splitProb + '%';
-        if (parseFloat(splitProb) > 1.0) potStats.style.display = 'block';
-        else potStats.style.display = 'none';
+        if (parseFloat(splitProb) > 1.0) potStats.style.display = 'block'; else potStats.style.display = 'none';
 
         // Build sorted equity list
         const players = [];

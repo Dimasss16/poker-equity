@@ -1,24 +1,24 @@
 :root {
-
+    /* Background Colors */
     --bg-dark: #121212;
     --bg-panel: #1f1f1f;
     --bg-elevated: #2a2a2a;
     --bg-overlay: rgba(0, 0, 0, 0.3);
     --bg-overlay-solid: rgba(30, 30, 36, 0.95);
 
-
+    /* Table Colors */
     --table-felt: #2c5e4f;
     --table-felt-dark: #1b3a31;
     --table-border: #3a3a45;
 
-
+    /* Text Colors */
     --text-primary: #e0e0e0;
     --text-muted: #888899;
     --text-subtle: #aaaaaa;
     --text-dark: #1a1a1a;
     --text-street: #8fbcbb;
 
-
+    /* Accent Colors */
     --accent-red: #a63d4f;
     --accent-red-hover: #c44d5f;
     --accent-green: #10B981;
@@ -27,17 +27,67 @@
     --accent-blue: #4cc9f0;
     --accent-blue-dark: #4361ee;
 
-
+    /* Card Background Colors */
     --card-bg: #f7f7f7;
     --card-bg-light: #ffffff;
     --card-bg-dark: #e6e6e6;
     --card-suit-red: #b91c3c;
     --card-suit-black: #2d2d2d;
 
-
+    /* Border Colors */
     --border-subtle: #333333;
     --border-medium: #444444;
     --border-strong: #555555;
+
+    /* Card Size: Medium (Board Cards) */
+    --card-width-md: 60px;
+    --card-height-md: 84px;
+    --card-rank-font-md: 1.25rem;
+    --card-suit-font-md: 1.875rem;
+    --card-rank-top-md: 4px;
+    --card-rank-left-md: 6px;
+    --card-suit-margin-md: 4px;
+
+    /* Card Size: Small (Player Hole Cards) */
+    --card-width-sm: 50px;
+    --card-height-sm: 70px;
+    --card-rank-font-sm: 1rem;
+    --card-suit-font-sm: 1.5rem;
+    --card-rank-top-sm: 2px;
+    --card-rank-left-sm: 4px;
+    --card-suit-margin-sm: 2px;
+
+    /* Card Size: Extra Small (Mobile Board Cards) */
+    --card-width-xs: 45px;
+    --card-height-xs: 60px;
+    --card-rank-font-xs: 0.8rem;
+    --card-suit-font-xs: 1.2rem;
+    --card-rank-top-xs: 3px;
+    --card-rank-left-xs: 4px;
+    --card-suit-margin-xs: 2px;
+
+    /* Card Size: Extra Extra Small (Mobile Hole Cards) */
+    --card-width-xxs: 42px;
+    --card-height-xxs: 58px;
+    --card-rank-font-xxs: 0.64rem;
+    --card-suit-font-xxs: 0.96rem;
+    --card-rank-top-xxs: 2px;
+    --card-rank-left-xxs: 3px;
+    --card-suit-margin-xxs: 2px;
+
+    /* Deck Picker Cards */
+    --deck-card-rank-font: 1.5625rem;
+    --deck-card-suit-font: 3rem;
+    --deck-card-rank-top: 4px;
+    --deck-card-rank-left: 6px;
+
+    /* Common Card Properties */
+    --card-border-radius: 8px;
+    --card-border-radius-sm: 6px;
+    --card-border-width: 2px;
+    --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --card-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.3);
+    --card-font-family: 'JetBrains Mono', monospace;
 }
 
 * {
@@ -121,6 +171,26 @@ header {
     flex-direction: column;
 }
 
+.live-odds-layout {
+    display: flex;
+    gap: 1.5rem;
+    flex: 1;
+    align-items: flex-start;
+    min-height: 0;
+}
+
+.left-column {
+    flex: 0 0 68%;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.table-container {
+    flex: 1;
+}
+
+
 .controls-bar {
     display: flex;
     justify-content: space-between;
@@ -191,7 +261,8 @@ select:hover {
     flex-direction: column;
     align-items: center;
     box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.5);
-    min-height: 600px;
+    min-height: 500px;
+    width: 100%;
 }
 
 .board-area {
@@ -233,18 +304,18 @@ select:hover {
 
 .card-wrapper {
     position: relative;
-    width: 60px;
-    height: 84px;
+    width: var(--card-width-md);
+    height: var(--card-height-md);
 }
 
 .card-input {
-    width: 60px;
-    height: 84px;
-    border-radius: 8px;
-    border: 2px solid var(--border-strong);
+    width: var(--card-width-md);
+    height: var(--card-height-md);
+    border-radius: var(--card-border-radius);
+    border: var(--card-border-width) solid var(--border-strong);
     background: rgba(255, 255, 255, 0.1);
     color: var(--text-primary);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--card-font-family);
     font-size: 1.2rem;
     text-align: center;
     text-transform: uppercase;
@@ -271,16 +342,17 @@ select:hover {
     z-index: 1;
 }
 
+/* Base Visual Card - Shared by all card types */
 .visual-card {
     position: absolute;
     top: 0;
     left: 0;
-    width: 60px;
-    height: 84px;
+    width: var(--card-width-md);
+    height: var(--card-height-md);
     background: linear-gradient(145deg, var(--card-bg-light), var(--card-bg-dark));
-    border-radius: 8px;
-    border: 2px solid var(--card-bg-light);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    border-radius: var(--card-border-radius);
+    border: var(--card-border-width) solid var(--card-bg-light);
+    box-shadow: var(--card-shadow);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -296,17 +368,17 @@ select:hover {
 
 .card-rank {
     position: absolute;
-    top: 4px;
-    left: 6px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.9rem;
+    top: var(--card-rank-top-md);
+    left: var(--card-rank-left-md);
+    font-family: var(--card-font-family);
+    font-size: var(--card-rank-font-md);
     font-weight: 700;
     line-height: 1;
 }
 
 .card-suit-center {
-    font-size: 2.2rem;
-    margin-top: 4px;
+    font-size: var(--card-suit-font-md);
+    margin-top: var(--card-suit-margin-md);
 }
 
 .card-red {
@@ -360,10 +432,10 @@ select:hover {
 .player-seat {
     position: absolute;
     pointer-events: auto;
-    width: 150px;
+    width: 120px;
     background: var(--bg-overlay-solid);
     border-radius: 12px;
-    padding: 0.5rem;
+    padding: 0.4rem;
     border: 1px solid var(--border-medium);
     transition: all 0.3s;
     display: flex;
@@ -371,35 +443,35 @@ select:hover {
 }
 
 .pos-bottom {
-    bottom: 20px;
+    bottom: 10px;
     left: 50%;
     transform: translateX(-50%);
 }
 
 .pos-bottom-left {
-    bottom: 18%;
-    left: 8%;
+    bottom: 22%;
+    left: 5%;
 }
 
 .pos-top-left {
-    top: 18%;
-    left: 8%;
+    top: 22%;
+    left: 5%;
 }
 
 .pos-top {
-    top: 20px;
+    top: 10px;
     left: 50%;
     transform: translateX(-50%);
 }
 
 .pos-top-right {
-    top: 18%;
-    right: 8%;
+    top: 22%;
+    right: 5%;
 }
 
 .pos-bottom-right {
-    bottom: 18%;
-    right: 8%;
+    bottom: 22%;
+    right: 5%;
 }
 
 .pos-left {
@@ -428,8 +500,8 @@ select:hover {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 0.5rem;
-    font-size: 0.9rem;
+    margin-bottom: 0.3rem;
+    font-size: 0.85rem;
 }
 
 .player-name {
@@ -466,21 +538,53 @@ select:hover {
 
 .hole-cards {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.4rem;
     justify-content: center;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.3rem;
+}
+
+
+.hole-cards .card-wrapper {
+    width: var(--card-width-sm);
+    height: var(--card-height-sm);
+}
+
+.hole-cards .card-input {
+    width: var(--card-width-sm);
+    height: var(--card-height-sm);
+    font-size: 1rem;
+}
+
+.hole-cards .visual-card {
+    width: var(--card-width-sm);
+    height: var(--card-height-sm);
+}
+
+.hole-cards .card-rank {
+    font-size: var(--card-rank-font-sm);
+    top: var(--card-rank-top-sm);
+    left: var(--card-rank-left-sm);
+}
+
+.hole-cards .card-suit-center {
+    font-size: var(--card-suit-font-sm);
+    margin-top: var(--card-suit-margin-sm);
+}
+
+/* Stats Row Below Table (in left column) */
+.stats-row {
+    display: flex;
+    gap: 1.5rem;
+    padding: 0;
 }
 
 .equity-table {
-    position: absolute;
-    bottom: 20px;
-    left: 20px;
+    flex: 1;
     background: var(--bg-overlay-solid);
     border-radius: 12px;
     padding: 0.8rem;
     border: 1px solid var(--border-medium);
     display: none;
-    z-index: 20;
 }
 
 .equity-table h4 {
@@ -506,15 +610,13 @@ select:hover {
 }
 
 .pot-stats {
-    position: absolute;
-    bottom: 20px;
-    right: 20px;
     background: var(--bg-overlay-solid);
     padding: 0.5rem 1rem;
     border-radius: 8px;
     font-size: 0.85rem;
     color: var(--text-primary);
     border: 1px solid var(--border-medium);
+    align-self: flex-start;
 }
 
 .toast {
@@ -590,7 +692,131 @@ select:hover {
     padding-bottom: 4px;
 }
 
+/* Card Picker Panel */
+.card-picker-panel {
+    flex: 0 0 30%;
+    background: var(--bg-overlay-solid);
+    border-radius: 12px;
+    border: 1px solid var(--border-medium);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.picker-header {
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    margin-bottom: 0.75rem;
+}
+
+.suit-headers {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    margin-bottom: 0.5rem;
+    text-align: center;
+}
+
+.suit-header {
+    font-size: 1.3rem;
+}
+
+.deck-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+
+.deck-card {
+    aspect-ratio: 5 / 7;
+    background: linear-gradient(145deg, var(--card-bg-light), var(--card-bg-dark));
+    border: var(--card-border-width) solid var(--card-bg-light);
+    border-radius: var(--card-border-radius-sm);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: all 0.15s ease;
+    padding: 0;
+    box-shadow: var(--card-shadow);
+}
+
+.deck-card:hover:not(.card-used) {
+    transform: translateY(-2px);
+    border-color: var(--accent-blue);
+    box-shadow: var(--card-shadow-hover);
+}
+
+.deck-card-rank {
+    position: absolute;
+    top: var(--deck-card-rank-top);
+    left: var(--deck-card-rank-left);
+    font-family: var(--card-font-family);
+    font-size: var(--deck-card-rank-font);
+    font-weight: 700;
+}
+
+.deck-card-suit {
+    font-family: var(--card-font-family);
+    font-size: var(--deck-card-suit-font);
+    line-height: 1;
+}
+
+.deck-card.card-used {
+    opacity: 0.4;
+    filter: grayscale(0.9);
+    pointer-events: none;
+    cursor: not-allowed;
+}
+
+.picker-hint {
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.75rem;
+    font-style: italic;
+}
+
+.card-input.active-target {
+    border-color: var(--accent-blue) !important;
+    box-shadow: 0 0 0 2px rgba(76, 201, 240, 0.3);
+}
+
 @media (max-width: 800px) {
+    .live-odds-layout {
+        flex-direction: column;
+    }
+
+    .left-column {
+        flex: none;
+    }
+
+    .table-container {
+        flex: none;
+    }
+
+    .card-picker-panel {
+        flex: none;
+        max-height: 300px;
+    }
+
+    .deck-grid {
+        overflow-y: auto;
+    }
+
+    .stats-row {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
     .players-grid {
         grid-template-columns: repeat(2, 1fr);
         max-width: 100%;
@@ -599,16 +825,46 @@ select:hover {
     .card-input,
     .card-wrapper,
     .visual-card {
-        width: 45px;
-        height: 60px;
+        width: var(--card-width-xs);
+        height: var(--card-height-xs);
     }
 
     .card-suit-center {
-        font-size: 1.5rem;
+        font-size: var(--card-suit-font-xs);
+        margin-top: var(--card-suit-margin-xs);
     }
 
     .card-rank {
-        font-size: 0.7rem;
+        font-size: var(--card-rank-font-xs);
+        top: var(--card-rank-top-xs);
+        left: var(--card-rank-left-xs);
+    }
+
+    .hole-cards .card-wrapper {
+        width: var(--card-width-xxs);
+        height: var(--card-height-xxs);
+    }
+
+    .hole-cards .card-input {
+        width: var(--card-width-xxs);
+        height: var(--card-height-xxs);
+        font-size: 0.85rem;
+    }
+
+    .hole-cards .visual-card {
+        width: var(--card-width-xxs);
+        height: var(--card-height-xxs);
+    }
+
+    .hole-cards .card-rank {
+        font-size: var(--card-rank-font-xxs);
+        top: var(--card-rank-top-xxs);
+        left: var(--card-rank-left-xxs);
+    }
+
+    .hole-cards .card-suit-center {
+        font-size: var(--card-suit-font-xxs);
+        margin-top: var(--card-suit-margin-xxs);
     }
 
     .analysis-container {
@@ -620,6 +876,6 @@ select:hover {
     }
 
     .player-seat {
-        width: 120px;
+        width: 100px;
     }
 }
