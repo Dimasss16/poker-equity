@@ -256,6 +256,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.board-area .visual-card').forEach(el => el.remove());
         document.querySelectorAll('.board-area .card-remove-btn').forEach(el => el.remove());
 
+        // Reset card picker
+        usedCards.clear();
+        updateCardGrid();
+
         setTimeout(() => updateBoardCardStates(), 0);
 
         resetStats();
