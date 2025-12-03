@@ -269,10 +269,13 @@ document.addEventListener('DOMContentLoaded', () => {
     resetBtn.addEventListener('click', () => {
         document.querySelectorAll('.card-input').forEach(inp => {
             inp.value = '';
-            inp.classList.remove('valid-card', 'hidden-input');
+            inp.classList.remove('valid-card', 'hidden-input', 'active-target');
             inp.removeAttribute('data-suit');
             inp.disabled = false;
             inp.classList.remove('disabled-input');
+            // Clear error styling
+            inp.style.borderColor = '';
+            inp.style.background = '';
         });
         document.querySelectorAll('.visual-card').forEach(el => el.remove());
         document.querySelectorAll('.card-remove-btn').forEach(el => el.remove());
@@ -285,6 +288,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Clear card picker
         usedCards.clear();
         updateCardGrid();
+        setActiveInput('p0-c1'); // Set first player's first card as active
+
+        // Hide error toast
+        showError(null);
 
         // Reset board card states
         setTimeout(() => updateBoardCardStates(), 0);
@@ -363,6 +370,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 e.target.style.borderColor = '';
                 e.target.style.background = '';
+
+                // Update card picker when typing
+                usedCards.add(currentCard);
+                updateCardGrid();
 
                 updateBoardCardStates();
 

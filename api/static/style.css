@@ -749,10 +749,68 @@ select:hover {
     box-shadow: var(--card-shadow);
 }
 
+/* Dim the card content on hover */
+.deck-card:hover:not(.card-used) .deck-card-rank,
+.deck-card:hover:not(.card-used) .deck-card-suit {
+    opacity: 0.3;
+    transition: opacity 0.2s ease;
+}
+
+/* Semi-transparent overlay on hover */
+.deck-card::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: var(--bg-overlay-solid);
+    border-radius: var(--card-border-radius-sm);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 5;
+}
+
+.deck-card:hover:not(.card-used)::before {
+    opacity: 0.75;
+}
+
+/* Typing hint in center on hover */
+.deck-card::after {
+    content: attr(data-card);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: var(--card-font-family);
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--card-bg-light);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 10;
+    text-transform: capitalize;
+}
+
+.deck-card:hover:not(.card-used)::after {
+    opacity: 1;
+}
+
+/* Remove suit-based coloring - use white for all */
+.deck-card[data-card*="H"]::after,
+.deck-card[data-card*="D"]::after,
+.deck-card[data-card*="S"]::after,
+.deck-card[data-card*="C"]::after {
+    color: var(--card-bg-light);
+}
+
 .deck-card:hover:not(.card-used) {
     transform: translateY(-2px);
-    border-color: var(--accent-blue);
     box-shadow: var(--card-shadow-hover);
+    border-color: rgba(30, 30, 36, 0.95);
+    background: var(--bg-overlay-solid);
 }
 
 .deck-card-rank {
